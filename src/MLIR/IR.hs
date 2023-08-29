@@ -1,132 +1,155 @@
+{-# LANGUAGE MagicHash #-}
 module MLIR.IR where
+import MLIR.C.IR as C
 
-import MLIR.C.IR hiding (Type, Attribute)
-import qualified MLIR.C.IR as C (Type, Attribute)
-
-import Foreign.C (CIntPtr)
-import Data.Primitive (sizeofByteArray)
-
-newtype Attribute = Attribute { getAttribute :: Context -> IO C.Attribute }
-(<#=) :: String -> Attribute -> Context -> IO NamedAttribute
-name <#= attr = \ctx -> NamedAttribute <$> mlirIdentifierGet ctx name <*> getAttribute attr ctx
-
-(<?=) :: String -> Maybe Attribute -> Maybe (Context -> IO NamedAttribute)
-_    <?= Nothing     = Nothing
-name <?= (Just attr) = Just (name <#= attr) 
-
-
--- newtype Location = Location { getLocation :: Context -> IO C.Location}
-newtype Type = Type { getType :: Context -> IO C.Type }
-
-newtype BlockM a = BlockM (Context -> Block -> IO a)
-blockMIO :: IO a -> BlockM a
-blockMIO m = BlockM $ \ _ _ -> m
-instance Functor BlockM where
-  fmap f (BlockM ma) = BlockM (\c b -> fmap f $ ma c b)
-instance Applicative BlockM where
-  pure a = BlockM (\_ _ -> return a)
-  (BlockM mf) <*> (BlockM ma) = BlockM $ \c b -> do 
-    f <- mf c b
-    a <- ma c b
-    return $ f a
-instance Monad BlockM where
-  (BlockM ma) >>= f = BlockM $ \c b -> do 
-    a <- ma c b
-    let BlockM mb = f a
-    mb c b
-blkArg :: CIntPtr -> BlockM Value
-blkArg idx = BlockM $ \_ blk -> 
-  mlirBlockGetArgument blk idx
-
-newtype RegionM a = RegionM (Context -> Region -> IO a)
-regionMIO :: IO a -> RegionM a 
-regionMIO m = RegionM $ \ _ _ -> m
-instance Functor RegionM where
-  fmap f (RegionM ma) = RegionM (\c b -> fmap f $ ma c b)
-instance Applicative RegionM where
-  pure a = RegionM (\_ _ -> return a)
-  (RegionM mf) <*> (RegionM ma) = RegionM $ \c b -> do 
-    f <- mf c b
-    a <- ma c b
-    return $ f a
-instance Monad RegionM where
-  (RegionM ma) >>= f = RegionM $ \c b -> do 
-    a <- ma c b
-    let RegionM mb = f a
-    mb c b
-
-newRegion :: RegionM a -> Context -> IO Region
-newRegion (RegionM rgn) ctx = do
-  rgnPtr <- mlirRegionCreate 
-  _ <- rgn ctx rgnPtr 
-  return rgnPtr
-
--- Is there a better way
-addBlock :: [Type] -> RegionM Block
-addBlock args = RegionM $ \ctx rgn -> do 
-  args' <- sequence $ getType <$> args <*> [ctx]
-  loc   <- mlirLocationUnknownGet ctx
-  blk   <- mlirBlockCreate $ zip args' $ repeat loc
-  mlirRegionAppendOwnedBlock rgn blk
-  return blk
-
-defBlock :: Block -> BlockM a -> RegionM ()
-defBlock blk (BlockM mkBlk) = RegionM $ \ctx _ -> do -- TODO: Beautify this
-  _ <- mkBlk ctx blk
-  return ()
-
+import Control.Monad
+import Data.Primitive.ByteArray
+import System.IO
+import Control.Exception (assert)
+import Foreign (withArrayLen, withArray)
+import Foreign.C.Types (CIntPtr)
 
 newtype ContextM a = ContextM (Context -> IO a)
+contextRunIO :: IO a -> ContextM a
+contextRunIO a = ContextM (const a)
+
 instance Functor ContextM where
-  fmap f (ContextM ma) = ContextM $ \c -> fmap f $ ma c
+  fmap f (ContextM a) = ContextM $ \ c -> fmap f (a c)
 instance Applicative ContextM where
-  pure a = ContextM $ \_ -> return a
-  (ContextM mf) <*> (ContextM ma) = ContextM $ \c -> do
-    f <- mf c 
-    a <- ma c
-    return $ f a
+  pure a = ContextM $ \ _ -> return a
+  (ContextM f) <*> (ContextM a) = ContextM $ \ c -> f c <*> a c
+  liftA2 f (ContextM a) (ContextM b) = ContextM $ \ c -> f <$> a c <*> b c
 instance Monad ContextM where
-  (ContextM ma) >>= f = ContextM $ \c -> do 
-    a <- ma c
-    let ContextM mb = f a
-    mb c
+  (ContextM a) >>= f = ContextM $ \ c -> do 
+    a' <- a c 
+    let ContextM b' = f a'
+    b' c
 
-moduleOp :: BlockM a -> ContextM Module
-moduleOp (BlockM blk) = ContextM $ \ctx -> do 
-  m <- mlirLocationUnknownGet ctx >>= mlirModuleCreateEmpty
-  _ <- blk ctx $ mlirModuleGetBody m
-  return m
+newtype RegionM a = RegionM (Context -> Region -> IO a)
+regionRunIO :: IO a -> RegionM a
+regionRunIO a = RegionM (\ _ _ -> a)
 
-moduleDestroy :: Module -> ContextM ()
-moduleDestroy m = ContextM $ \_ -> 
-  mlirModuleDestroy m
+blockGet :: [AnyType] -> RegionM Block
+blockGet inputs = RegionM $ \ c r -> do
+  let loc = locationUnknownGet c
+  inputs' <- forM inputs (`typeGet` c)
+  withArrayLen inputs' $ \ numArgs args -> 
+    withArray (replicate numArgs loc) $ \ loc' -> do 
+      b <- blockCreate (fromIntegral numArgs) args loc'
+      regionAppendOwnedBlock r b 
+      return b
 
-withContext :: ContextM a -> IO a
-withContext (ContextM ma) = do 
-  ctx <- mlirContextCreate
-  a   <- ma ctx
-  mlirContextDestroy ctx
+blockDef :: Block -> BlockM () -> RegionM ()
+blockDef b (BlockM f) = RegionM $ \ c _ -> f c b
+
+blockArg :: CIntPtr -> BlockM Value
+blockArg i = BlockM $ const (`blockGetArgument` i)
+
+instance Functor RegionM where
+  fmap f (RegionM a) = RegionM $ \ c r -> fmap f (a c r)
+instance Applicative RegionM where
+  pure a = RegionM $ \ _ _ -> return a
+  (RegionM f) <*> (RegionM a) = RegionM $ \ c r -> f c r <*> a c r
+  liftA2 f (RegionM a) (RegionM b) = RegionM $ \ c r -> f <$> a c r <*> b c r
+instance Monad RegionM where
+  (RegionM a) >>= f = RegionM $ \ c r -> do 
+    a' <- a c r
+    let RegionM b' = f a'
+    b' c r
+
+
+newtype BlockM a = BlockM (Context -> Block -> IO a)
+blockRunIO :: IO a -> BlockM a
+blockRunIO a = BlockM (\ _ _ -> a)
+
+
+instance Functor BlockM where
+  fmap f (BlockM a) = BlockM $ \ c b -> fmap f (a c b)
+instance Applicative BlockM where
+  pure a = BlockM $ \ _ _ -> return a
+  (BlockM f) <*> (BlockM a) = BlockM $ \ c b -> f c b <*> a c b
+  liftA2 g (BlockM a) (BlockM f) = BlockM $ \ c b -> g <$> a c b <*> f c b
+instance Monad BlockM where
+  (BlockM a) >>= f = BlockM $ \ c b -> do 
+    a' <- a c b
+    let BlockM b' = f a'
+    b' c b
+
+
+runContextM :: ContextM a -> IO a
+runContextM (ContextM f) = do 
+  c <- contextCreate
+  a <- f c 
+  contextDestroy c
   return a
 
 loadDialect :: DialectHandle -> ContextM Dialect
-loadDialect handle = ContextM $ \ctx -> 
-  mlirDialectHandleLoadDialect handle ctx
+loadDialect handle = ContextM $ dialectHandleLoadDialect handle
 
 loadDialect_ :: DialectHandle -> ContextM ()
-loadDialect_ handle = ContextM $ \ctx ->
-  mlirDialectHandleLoadDialect handle ctx >> return ()
+loadDialect_ handle = void $ loadDialect handle
 
-dumpModule :: Module -> ContextM ()
-dumpModule m = ContextM $ \_ -> mlirOperationDump $ mlirModuleGetOperation m
+-- Attributes
+newtype AnyAttr = AnyAttr (Context -> IO Attribute)
+class AttrGet a where
+  attrGet :: a -> Context -> IO Attribute
+  
+  toAnyAttr :: a -> AnyAttr
+  toAnyAttr a = AnyAttr $ attrGet a
 
-operationWriteBytecode :: Operation -> ContextM Bytecode
-operationWriteBytecode op = ContextM $ \_ ->
-  mlirOperationWriteBytecode op
+instance AttrGet AnyAttr where
+  attrGet (AnyAttr a) = a
+  toAnyAttr = id
 
-moduleWriteBytecode :: Module -> ContextM Bytecode 
-moduleWriteBytecode m = operationWriteBytecode $ mlirModuleGetOperation m
+-- Type
+newtype AnyType = AnyType (Context -> IO Type)
+class TypeGet a where
+  typeGet :: a -> Context -> IO Type
+  
+  toAnyType :: a -> AnyType
+  toAnyType a = AnyType $ typeGet a
 
-bytecodeSize :: Bytecode -> Int
-bytecodeSize (Bytecode bc) = sizeofByteArray bc
+instance TypeGet AnyType where
+  typeGet (AnyType a) = a
+  toAnyType = id
+
+
+-- Module
+moduleOp :: BlockM () -> ContextM Module
+moduleOp (BlockM f) = ContextM $ \ c -> do
+  let loc = locationUnknownGet c
+  m <- moduleCreateEmpty loc
+  f c (moduleGetBody m)
+  return m
+
+moduleDestroy :: Module -> ContextM ()
+moduleDestroy m = ContextM $ const (C.moduleDestroy m)
+
+moduleDump :: Module -> ContextM ()
+moduleDump m = ContextM $ const $ C.operationDump (C.moduleGetOperation m)
+
+moduleGetOperation :: Module -> Operation
+moduleGetOperation = C.moduleGetOperation
+
+-- ByteCode
+newtype ByteCode = ByteCode ByteArray
+writeByteCode :: Operation -> ContextM ByteCode
+writeByteCode operation = contextRunIO $ do 
+  buffer0@(MutableByteArray buffer0#) <- newPinnedByteArray initBufferSize
+  requiredSize <- C.writeByteCode operation 0 initBufferSize buffer0#
+  buffer1@(MutableByteArray buffer1#) <- resizeMutableByteArray buffer0 (fromIntegral requiredSize)
+  when (requiredSize > initBufferSize) (void $ C.writeByteCode operation initBufferSize requiredSize buffer1#)
+  ByteCode <$> unsafeFreezeByteArray buffer1
+  where initBufferSize :: Num i => i
+        initBufferSize = 512
+
+instance Show ByteCode where 
+  show (ByteCode byteCode) = show byteCode
+
+saveByteCode :: ByteCode -> FilePath -> IO ()
+saveByteCode (ByteCode byteCode) filepath = assert (isByteArrayPinned byteCode) $ withBinaryFile filepath WriteMode (\ handle ->
+  hPutBuf handle ptr size)
+  where ptr  = byteArrayContents byteCode
+        size = sizeofByteArray byteCode
 
 

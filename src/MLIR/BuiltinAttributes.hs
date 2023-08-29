@@ -1,137 +1,311 @@
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MagicHash #-}
 module MLIR.BuiltinAttributes where
-import MLIR.C.BuiltinAttributes
-import MLIR.IR (Attribute(..), Type(..))
+
+import qualified MLIR.C.BuiltinAttributes as C
+
+import MLIR.IR
+import MLIR.BuiltinTypes
+
+import Control.Monad
+
+import Data.String
+
 import Foreign
+import Foreign.C
 
-type TypedAttr = Attribute
+import GHC.IsList
 
-attributeNull :: Attribute
-attributeNull = Attribute $ \_ -> return mlirAttributeGetNull 
-
-type ArrayAttr = Attribute
-arrayAttr :: [Attribute] -> ArrayAttr
-arrayAttr ((fmap (\(Attribute x) -> x)) -> arr) = Attribute $ \c -> 
-  mlirArrayAttrGet c =<< sequence (fmap (\a -> a c) arr)
-
-type TypeAttr = Attribute
-typeAttr :: Type -> TypeAttr
-typeAttr (Type typeGet) = Attribute $ \c ->
-  mlirTypeAttrGet =<< typeGet c
-
-type FlatSymbolRefAttr = Attribute
-flatSymbolRefAttr :: String -> FlatSymbolRefAttr
-flatSymbolRefAttr symbol = Attribute $ \c -> 
-  mlirFlatSymbolRefAttrGet c symbol
-
-type DenseArrayAttr = Attribute
-type DenseBoolArrayAttr = Attribute
-denseBoolArrayAttr :: [Bool] -> DenseBoolArrayAttr
-denseBoolArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseBoolArrayGet c denseArr
-
-type DenseI8ArrayAttr = DenseArrayAttr
-denseI8ArrayAttr :: [Int8] -> DenseI8ArrayAttr
-denseI8ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseI8ArrayGet c denseArr
-
-type DenseI16ArrayAttr = DenseArrayAttr
-denseI16ArrayAttr :: [Int16] -> DenseI16ArrayAttr
-denseI16ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseI16ArrayGet c denseArr
-
-type DenseI32ArrayAttr = DenseArrayAttr
-denseI32ArrayAttr :: [Int32] -> DenseI32ArrayAttr
-denseI32ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseI32ArrayGet c denseArr
-
-type DenseI64ArrayAttr = DenseArrayAttr
-denseI64ArrayAttr :: [Int64] -> DenseI64ArrayAttr
-denseI64ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseI64ArrayGet c denseArr
-
-type DenseF32ArrayAttr = DenseArrayAttr
-denseF32ArrayAttr :: [Float] -> DenseF32ArrayAttr
-denseF32ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseF32ArrayGet c denseArr
-
-type DenseF64ArrayAttr = DenseArrayAttr
-denseF64ArrayAttr :: [Double] -> DenseF64ArrayAttr
-denseF64ArrayAttr denseArr = Attribute $ \c ->
-  mlirDenseF64ArrayGet c denseArr
-
-type StringAttr = Attribute
-stringAttr :: String -> StringAttr
-stringAttr str = Attribute $ \c ->
-  mlirStringAttrGet c str
-
-type DenseIntElementsAttr = Attribute
-type DenseElementsAttr = Attribute
-denseElementsAttrBool :: Type -> [Bool] -> DenseIntElementsAttr
-denseElementsAttrBool shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrBoolGet shapeType' elements
-
-denseElementsAttrInt8 :: Type -> [Int8] -> DenseIntElementsAttr
-denseElementsAttrInt8 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrInt8Get shapeType' elements
-
-denseElementsAttrInt16 :: Type -> [Int16] -> DenseIntElementsAttr
-denseElementsAttrInt16 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrInt16Get shapeType' elements
-
-denseElementsAttrInt32 :: Type -> [Int32] -> DenseIntElementsAttr
-denseElementsAttrInt32 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrInt32Get shapeType' elements
-
-denseElementsAttrInt64 :: Type -> [Int64] -> DenseIntElementsAttr
-denseElementsAttrInt64 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrInt64Get shapeType' elements
-
-denseElementsAttrUInt8 :: Type -> [Word8] -> DenseIntElementsAttr
-denseElementsAttrUInt8 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrUInt8Get shapeType' elements
-
-denseElementsAttrUInt16 :: Type -> [Word16] -> DenseIntElementsAttr
-denseElementsAttrUInt16 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrUInt16Get shapeType' elements
-
-denseElementsAttrUInt32 :: Type -> [Word32] -> DenseIntElementsAttr
-denseElementsAttrUInt32 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrUInt32Get shapeType' elements
-
-denseElementsAttrUInt64 :: Type -> [Word64] -> DenseIntElementsAttr
-denseElementsAttrUInt64 shapeType elements = Attribute $ \c -> do
-  shapeType' <- getType shapeType c
-  mlirDenseElementsAttrUInt64Get shapeType' elements
-
--- TODO: Add more
-type DenseFPElementsAttr = DenseElementsAttr
-denseElementsAttrFloat :: Type -> [Float] -> DenseFPElementsAttr
-denseElementsAttrFloat shapeType elements = Attribute $ \ c -> do 
-  shapeType' <- getType shapeType c 
-  mlirDenseElementsAttrFloatGet shapeType' elements
+import Data.Bool
+import Data.Primitive.ByteArray
 
 
-denseElementsAttrFloatSplat :: Type -> Float -> DenseFPElementsAttr 
-denseElementsAttrFloatSplat shapeType e = Attribute $ \ c -> do
-  shapeType' <- getType shapeType c 
-  mlirDenseElementsAttrFloatSplatGet shapeType' e
+data NullAttr = NullAttr
+instance AttrGet NullAttr where
+  attrGet _ _ = return C.attributeGetNull
+data UnitAttr
+instance AttrGet UnitAttr where
+  attrGet _ = C.unitAttrGet
+
+data IntegerAttr = IntegerAttr IntegerType Int64
+instance AttrGet IntegerAttr where
+  attrGet (IntegerAttr t v) c = (`C.integerAttrGet` v) =<< typeGet t c
+newtype BoolAttr = BoolAttr Bool
+instance AttrGet BoolAttr where
+  attrGet (BoolAttr boolean) = attrGet (IntegerAttr (IntegerType Signless 1) (if boolean then 1 else 0))
+
+data FloatAttr a = FloatAttr a Double
+instance TypeGet a => AttrGet (FloatAttr a) where
+  attrGet (FloatAttr a v) c = do 
+    a' <- typeGet a c 
+    C.floatAttrDoubleGet c a' v
 
 
--- TODO: To be implemented
-type IntegerAttr = Attribute
-type FloatAttr = Attribute
-type UnitAttr = Attribute
-type SymbolRefAttr = Attribute
-type ElementsAttr = Attribute -- Doesn't make too many sense
-type BoolAttr = Attribute
-type AffineMapAttr = Attribute
-type DictionaryAttr = Attribute
+newtype ArrayAttr = ArrayAttr [AnyAttr]
+instance AttrGet ArrayAttr where
+  attrGet (ArrayAttr attrs) c = do
+    attrs' <- mapM (`attrGet` c) attrs
+    withArrayLen attrs' $ \ (fromIntegral -> numElements) elements -> 
+      C.arrayAttrGet c numElements elements
+instance IsList ArrayAttr where
+  type Item ArrayAttr = AnyAttr
+  toList (ArrayAttr l) = l
+  fromList = ArrayAttr
+
+
+newtype DenseArray a = DenseArray [a]
+
+type DenseBoolArrayAttr = DenseArray Bool
+type DenseI8ArrayAttr = DenseArray Int8
+type DenseI16ArrayAttr = DenseArray Int16
+type DenseI32ArrayAttr = DenseArray Int32
+type DenseI64ArrayAttr = DenseArray Int64
+type DenseF32ArrayAttr = DenseArray Float
+type DenseF64ArrayAttr = DenseArray Double
+
+instance AttrGet DenseBoolArrayAttr where
+  attrGet (DenseArray (fmap (bool 0 1) -> a :: [CInt])) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseBoolArrayGet c size values
+instance AttrGet DenseI8ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseI8ArrayGet c size values
+instance AttrGet DenseI16ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseI16ArrayGet c size values
+instance AttrGet DenseI32ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseI32ArrayGet c size values
+instance AttrGet DenseI64ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseI64ArrayGet c size values
+instance AttrGet DenseF32ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseF32ArrayGet c size values
+instance AttrGet DenseF64ArrayAttr where
+  attrGet (DenseArray a) c = 
+    withArrayLen a $ \ (fromIntegral -> size) values -> 
+      C.denseF64ArrayGet c size values
+
+class AttrGet a => DenseArrayAttr a
+instance DenseArrayAttr DenseBoolArrayAttr
+instance DenseArrayAttr DenseI8ArrayAttr
+instance DenseArrayAttr DenseI16ArrayAttr 
+instance DenseArrayAttr DenseI32ArrayAttr
+instance DenseArrayAttr DenseI64ArrayAttr
+instance DenseArrayAttr DenseF32ArrayAttr
+instance DenseArrayAttr DenseF64ArrayAttr
+
+newtype StringAttr = StringAttr String
+instance AttrGet StringAttr where
+  attrGet (StringAttr str) c =
+    withCStringLen str $ \ (str', fromIntegral -> strSize) -> 
+      C.stringAttrGet c str' strSize
+instance IsString StringAttr where
+  fromString = StringAttr
+
+newtype TypeAttr a = TypeAttr a
+instance TypeGet a => AttrGet (TypeAttr a) where
+  attrGet (TypeAttr t) = C.typeAttrGet <=< typeGet t
+ 
+
+newtype FlatSymbolRefAttr = FlatSymbolRefAttr String
+instance AttrGet FlatSymbolRefAttr where
+  attrGet (FlatSymbolRefAttr symbol) c = 
+    withCStringLen symbol $ \ (str, fromIntegral -> size) -> 
+      C.flatSymbolRefAttrGet c str size
+
+-- Typed attributes
+class AttrGet a => TypedAttr a
+-- TODO: Implement
+
+
+-- Dense elements
+data DenseIntOrFPElements s t = DenseIntOrFPElements s t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Bool) where
+  attrGet (DenseIntOrFPElements s (bool 0 1 -> t)) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrBoolSplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Bool]) where
+  attrGet (DenseIntOrFPElements s (fmap $ bool 0 1 -> t)) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrBoolGet s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Word8) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrUInt8SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Word8]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrUInt8Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Int8) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrInt8SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Int8]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrInt8Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Word16]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrUInt16Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Int16]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrInt16Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Word32) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrUInt32SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Word32]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrUInt32Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Int32) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrInt32SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Int32]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrInt32Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Word64) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrUInt64SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Word64]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrUInt64Get s' n t'
+
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) Int64) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrInt64SplatGet s' t
+instance ShapedType (s IntegerType) => AttrGet (DenseIntOrFPElements (s IntegerType) [Int64]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrInt64Get s' n t'
+
+instance ShapedType (s F32Type) => AttrGet (DenseIntOrFPElements (s F32Type) Float) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrFloatSplatGet s' t
+instance ShapedType (s F32Type) => AttrGet (DenseIntOrFPElements (s F32Type) [Float]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrFloatGet s' n t'
+
+instance ShapedType (s F64Type) => AttrGet (DenseIntOrFPElements (s F64Type) Double) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    C.denseElementsAttrDoubleSplatGet s' t
+instance ShapedType (s F64Type) => AttrGet (DenseIntOrFPElements (s F64Type) [Double]) where
+  attrGet (DenseIntOrFPElements s t) c = do 
+    s' <- typeGet s c
+    withArrayLen t $ \ (fromIntegral -> n) t' ->
+      C.denseElementsAttrDoubleGet s' n t'
+
+
+class AttrGet a => DenseIntOrFPElementsAttr a
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Bool)
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Bool]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Word8) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Word8]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Int8) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Int8]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Word16]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Int16]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Word32) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Word32]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Int32) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Int32]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Word64) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Word64]) 
+
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) Int64) 
+instance ShapedType (s IntegerType) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s IntegerType) [Int64]) 
+
+instance ShapedType (s F32Type) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s F32Type) Float) 
+instance ShapedType (s F32Type) => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s F32Type) [Float]) 
+
+instance ShapedType (s F64Type)     => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s F64Type) Double) 
+instance ShapedType (s F64Type)     => DenseIntOrFPElementsAttr (DenseIntOrFPElements (s F64Type) [Double]) 
+
+class DenseIntOrFPElementsAttr a => DenseIntElementsAttr a
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Bool)
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Bool]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Word8) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Word8]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Int8) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Int8]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Word16]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Int16]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Word32) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Word32]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Int32) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Int32]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Word64) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Word64]) 
+
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) Int64) 
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseIntOrFPElements (s IntegerType) [Int64]) 
+
+instance ShapedType (s F32Type) => DenseIntElementsAttr (DenseIntOrFPElements (s F32Type) Float) 
+instance ShapedType (s F32Type) => DenseIntElementsAttr (DenseIntOrFPElements (s F32Type) [Float]) 
+
+class DenseIntOrFPElementsAttr a => DenseFPElementsAttr a
+instance ShapedType (s F64Type)     => DenseFPElementsAttr (DenseIntOrFPElements (s F64Type) Double) 
+instance ShapedType (s F64Type)     => DenseFPElementsAttr (DenseIntOrFPElements (s F64Type) [Double]) 
+
+data DenseElementsRawBuffer s = DenseElementsRawBuffer s ByteArray
+instance ShapedType s => AttrGet (DenseElementsRawBuffer s) where
+  attrGet (DenseElementsRawBuffer s buffer@(ByteArray buffer#)) c = do 
+    s' <- typeGet s c 
+    C.denseElementsAttrRawBufferGet s' size buffer#
+    where size = fromIntegral $ sizeofByteArray buffer
+instance ShapedType s => DenseIntOrFPElementsAttr (DenseElementsRawBuffer s)
+instance ShapedType (s IntegerType) => DenseIntElementsAttr (DenseElementsRawBuffer (s IntegerType))
+instance ShapedType (s F32Type) => DenseFPElementsAttr (DenseElementsRawBuffer (s F32Type))
+instance ShapedType (s F64Type) => DenseFPElementsAttr (DenseElementsRawBuffer (s F64Type))
+
+type ElementsAttr a = DenseIntOrFPElementsAttr a
+type DenseElementsAttr a = DenseIntOrFPElementsAttr a

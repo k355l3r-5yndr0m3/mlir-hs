@@ -20,6 +20,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Func"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Func" </> "IR"</> "FuncOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Func.Ops"
                []
                (dialectOutput </> "Func" </> "Ops" <.> "hs")
@@ -27,6 +28,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Arith"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Arith" </> "IR" </> "ArithOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Arith.Ops"
                ["MLIR.Dialect.Arith.Attributes"]
                (dialectOutput </> "Arith" </> "Ops" <.> "hs")
@@ -35,6 +37,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Math"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Math" </> "IR" </> "MathOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Math.Ops"
                ["MLIR.Dialect.Arith.Attributes"]
                (dialectOutput </> "Math" </> "Ops" <.> "hs")
@@ -42,6 +45,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Async"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Async" </> "IR" </> "AsyncOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Async.Ops"
                []
                (dialectOutput </> "Async" </> "Ops" <.> "hs")
@@ -49,6 +53,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "ControlFlow"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "ControlFlow" </> "IR" </> "ControlFlowOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.ControlFlow.Ops"
                []
                (dialectOutput </> "ControlFlow" </> "Ops" <.> "hs")
@@ -56,6 +61,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "GPU"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "GPU" </> "IR" </> "GPUOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.GPU.Ops"
                ["MLIR.Dialect.GPU.Attributes"]
                (dialectOutput </> "GPU" </> "Ops" <.> "hs")
@@ -63,11 +69,13 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Linalg"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Linalg" </> "IR" </> "LinalgOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Linalg.Ops"
                []
                (dialectOutput </> "Linalg" </> "Ops" <.> "hs")
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Linalg" </> "IR" </> "LinalgStructuredOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Linalg.StructuredOps"
                ["MLIR.Dialect.Linalg.Attributes"]
                (dialectOutput </> "Linalg" </> "StructuredOps" <.> "hs")
@@ -83,6 +91,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "MemRef"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "MemRef" </> "IR" </> "MemRefOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.MemRef.Ops"
                ["MLIR.Dialect.MemRef.Attributes"]
                (dialectOutput </> "MemRef" </> "Ops" <.> "hs")
@@ -91,6 +100,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "MLProgram"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "MLProgram" </> "IR" </> "MLProgramOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.MLProgram.Ops"
                []
                (dialectOutput </> "MLProgram" </> "Ops" <.> "hs")
@@ -98,6 +108,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "PDL"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "PDL" </> "IR" </> "PDLOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.PDL.Ops"
                []
                (dialectOutput </> "PDL" </> "Ops" <.> "hs")
@@ -107,6 +118,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Quant"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Quant" </> "QuantOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Quant.Ops"
                []
                (dialectOutput </> "Quant" </> "Ops" <.> "hs")
@@ -115,6 +127,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "SCF"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "SCF" </> "IR" </> "SCFOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.SCF.Ops"
                []
                (dialectOutput  </> "SCF" </> "Ops" <.> "hs")
@@ -123,6 +136,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Shape"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Shape" </> "IR" </> "ShapeOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Shape.Ops"
                []
                (dialectOutput </> "Shape" </> "Ops" <.> "hs")
@@ -140,6 +154,7 @@ userHooks = baseHooks {
     createDirectoryIfMissing True $ dialectOutput </> "Tensor"
     hsGenerate [dialectInclude] 
                (dialectInclude </> "mlir" </> "Dialect" </> "Tensor" </> "IR" </> "TensorOps" <.> "td")
+               "typemap.h"
                "MLIR.Dialect.Tensor.Ops"
                []
                (dialectOutput </> "Tensor" </> "Ops" <.> "hs")
