@@ -1,6 +1,15 @@
 {-# LANGUAGE ViewPatterns #-}
-module MLIR.AutogenUtils where
-import MLIR.C.IR as C
+module MLIR.AutogenUtils (
+  (<#=), (<?=), (?:)
+, operationCreate
+, operationGetAllResults
+, operationGetResult
+, runRegionM
+, locationUnknownGet
+, blockAppendOwnedOperation
+) where
+import qualified MLIR.C.IR as C (operationCreate)
+import MLIR.C.IR hiding (operationCreate)
 import MLIR.IR
 
 import Control.Monad
@@ -51,5 +60,3 @@ runRegionM (RegionM f) c = do
   f c r 
   return r
 
-testing :: [Int]
-testing = 1:3:5:23:[4, 12, 5]++[13]++3:12:6:[2]
