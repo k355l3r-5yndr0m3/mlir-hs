@@ -60,72 +60,77 @@ extra-doc-files:    CHANGELOG.md
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall 
 
 library
     -- Import common warning flags.
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  MLIR 
+    exposed-modules:  MLIR
                       MLIR.IR
                       MLIR.BuiltinAttributes
                       MLIR.BuiltinTypes
+                      MLIR.AutogenUtils
+                      MLIR.C.IR
+                      MLIR.C.AffineMap
+                      MLIR.C.BuiltinAttributes
+                      MLIR.C.BuiltinTypes
                       MLIR.Dialect.Func
                       MLIR.Dialect.Math
                       MLIR.Dialect.Arith.Attributes
                       MLIR.Dialect.Arith
                       MLIR.Dialect.Async
                       MLIR.Dialect.ControlFlow
-                      MLIR.Dialect.GPU.Attributes
-                      MLIR.Dialect.GPU
-                      MLIR.Dialect.Linalg
-                      MLIR.Dialect.Linalg.Attributes
-                      MLIR.Dialect.MemRef.Attributes 
-                      -- MLIR.Dialect.LLVM.Attributes
-                      MLIR.C.IR
-                      MLIR.C.BuiltinTypes
-                      MLIR.C.BuiltinAttributes
+                      -- MLIR.Dialect.GPU.Attributes
+                      -- MLIR.Dialect.GPU
+                      -- MLIR.Dialect.Linalg
+                      -- MLIR.Dialect.Linalg.Attributes
+                      -- MLIR.Dialect.MemRef.Attributes 
+                      -- -- MLIR.Dialect.LLVM.Attributes
+                      -- MLIR.C.IR
+                      -- MLIR.C.BuiltinTypes
+                      -- MLIR.C.BuiltinAttributes
 
     other-modules:    MLIR.Dialect.Func.Ops
                       MLIR.Dialect.Arith.Ops
                       MLIR.Dialect.Math.Ops
                       MLIR.Dialect.Async.Ops
                       MLIR.Dialect.ControlFlow.Ops
-                      MLIR.Dialect.GPU.Ops
-                      MLIR.Dialect.Linalg.Ops
-                      MLIR.Dialect.Linalg.StructuredOps
-                      -- MLIR.Dialect.LLVM.Ops
-                      MLIR.Dialect.MemRef.Ops 
-                      MLIR.Dialect.MLProgram.Ops
-                      MLIR.Dialect.PDL.Ops
-                      MLIR.Dialect.Quant.Ops
-                      MLIR.Dialect.SCF.Ops
-                      MLIR.Dialect.Shape.Ops
-                      -- MLIR.Dialect.SparseTensor.Ops
-                      MLIR.Dialect.Tensor.Ops
-                      -- MLIR.Dialect.Transform.Ops
-                      -- MLIR.Dialect.Vector.Ops
+                      -- MLIR.Dialect.GPU.Ops
+                      -- MLIR.Dialect.Linalg.Ops
+                      -- MLIR.Dialect.Linalg.StructuredOps
+                      -- -- MLIR.Dialect.LLVM.Ops
+                      -- MLIR.Dialect.MemRef.Ops 
+                      -- MLIR.Dialect.MLProgram.Ops
+                      -- MLIR.Dialect.PDL.Ops
+                      -- MLIR.Dialect.Quant.Ops
+                      -- MLIR.Dialect.SCF.Ops
+                      -- MLIR.Dialect.Shape.Ops
+                      -- -- MLIR.Dialect.SparseTensor.Ops
+                      -- MLIR.Dialect.Tensor.Ops
+                      -- -- MLIR.Dialect.Transform.Ops
+                      -- -- MLIR.Dialect.Vector.Ops
 
     autogen-modules:  MLIR.Dialect.Func.Ops
                       MLIR.Dialect.Arith.Ops
                       MLIR.Dialect.Math.Ops
                       MLIR.Dialect.Async.Ops
                       MLIR.Dialect.ControlFlow.Ops
-                      MLIR.Dialect.GPU.Ops
-                      MLIR.Dialect.Linalg.Ops
-                      MLIR.Dialect.Linalg.StructuredOps
-                      -- MLIR.Dialect.LLVM.Ops
-                      MLIR.Dialect.MemRef.Ops
-                      MLIR.Dialect.MLProgram.Ops
-                      MLIR.Dialect.PDL.Ops
-                      MLIR.Dialect.Quant.Ops
-                      MLIR.Dialect.SCF.Ops
-                      MLIR.Dialect.Shape.Ops
-                      -- MLIR.Dialect.SparseTensor.Ops
-                      MLIR.Dialect.Tensor.Ops
-                      -- MLIR.Dialect.Transform.Ops
-                      -- MLIR.Dialect.Vector.Ops
+                      -- MLIR.Dialect.GPU.Ops
+                      -- MLIR.Dialect.Linalg.Ops
+                      -- MLIR.Dialect.Linalg.StructuredOps
+                      -- -- MLIR.Dialect.LLVM.Ops
+                      -- MLIR.Dialect.MemRef.Ops
+                      -- MLIR.Dialect.MLProgram.Ops
+                      -- MLIR.Dialect.PDL.Ops
+                      -- MLIR.Dialect.Quant.Ops
+                      -- MLIR.Dialect.SCF.Ops
+                      -- MLIR.Dialect.Shape.Ops
+                      -- -- MLIR.Dialect.SparseTensor.Ops
+                      -- MLIR.Dialect.Tensor.Ops
+                      -- -- MLIR.Dialect.Transform.Ops
+                      -- -- MLIR.Dialect.Vector.Ops
     
 
 
@@ -437,13 +442,13 @@ library
                       MLIRX86VectorToLLVMIRTranslation
                       MLIRX86VectorTransforms
 
+    install-includes: typemap.h
 
-
-
-
-
-
-
+    include-dirs:     cpphs/
+                      cbits/
+                      /home/cha0s/.local/include 
+                      -- Hack to get around hls fuckery
+    extra-lib-dirs:   /home/cha0s/.local/lib
 
     c-sources:        cbits/FFI/IR.c
                       cbits/FFI/builtinTypes.c

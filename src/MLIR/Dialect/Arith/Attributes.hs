@@ -1,204 +1,75 @@
-{-# LANGUAGE PatternSynonyms #-}
--- TODO: Remove the *Get function, make c function for each enum
+{-# OPTIONS_GHC -pgmPgcc -optP-E -optP-DHASKELL #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeFamilies #-}
+-- {-# LANGUAGE ForeignFunctionInterface #-}
 module MLIR.Dialect.Arith.Attributes (
-  fastMathFlagsNone
-, fastMathFlagsReassoc
-, fastMathFlagsNnan 
-, fastMathFlagsNinf
-, fastMathFlagsNsz
-, fastMathFlagsArcp
-, fastMathFlagsContract
-, fastMathFlagsAfn
-, fastMathFlagsAttrGet
-
-, cmpIPredicateEq 
-, cmpIPredicateNe 
-, cmpIPredicateSlt
-, cmpIPredicateSle
-, cmpIPredicateSgt
-, cmpIPredicateSge
-, cmpIPredicateUlt
-, cmpIPredicateUle
-, cmpIPredicateUgt
-, cmpIPredicateUge
-, cmpIPredicateAttrGet 
-
-, cmpFPredicateAlwaysFalse
-, cmpFPredicateOEQ
-, cmpFPredicateOGT
-, cmpFPredicateOGE
-, cmpFPredicateOLT
-, cmpFPredicateOLE
-, cmpFPredicateONE
-, cmpFPredicateORD
-, cmpFPredicateUEQ
-, cmpFPredicateUGT
-, cmpFPredicateUGE
-, cmpFPredicateULT
-, cmpFPredicateULE
-, cmpFPredicateUNE
-, cmpFPredicateUNO
-, cmpFPredicateAlwaysTrue
-, cmpFPredicateAttrGet
-
-, FastMathFlagsAttr
-, CmpIPredicateAttr
-, CmpFPredicateAttr
+  FastMathFlagsAttr
+, FastMathFlags(..)
+, CmpIPredicateAttr(..)
+, CmpFPredicateAttr(..)
 ) where
-import qualified MLIR.C.IR as C
+import Prelude hiding (EQ)
+
+import MLIR.C.IR
 import MLIR.IR
 
-import Foreign 
+import Data.Bits
+import Foreign
 
--- TODO: Change this
-type FastMathFlagsAttr = Attribute
-foreign import ccall unsafe "hs__mlirArithFastMathFlagsAttrGet"
-  mlirArithFastMathFlagsAttrGet' :: C.Context -> Word32 -> IO C.Attribute
+import GHC.IsList
 
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__none" 
-  mlirArithFastMathFlags__none :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__reassoc" 
-  mlirArithFastMathFlags__reassoc :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__nnan" 
-  mlirArithFastMathFlags__nnan :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__ninf" 
-  mlirArithFastMathFlags__ninf :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__nsz" 
-  mlirArithFastMathFlags__nsz :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__arcp" 
-  mlirArithFastMathFlags__arcp :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__contract" 
-  mlirArithFastMathFlags__contract :: Word32
-foreign import ccall unsafe "hs__mlirArithFastMathFlags__afn" 
-  mlirArithFastMathFlags__afn :: Word32
-newtype FastMathFlags = FastMathFlags Word32 
-                      deriving(Eq, Bits)
+#include <Dialect/arith.cpp>
+data FastMathFlags = NONE | REASSOC | NNAN | NINF | NSZ | ARCP | CONTRACT | AFN
+fastMathFlagsBit :: FastMathFlags -> Word32
+fastMathFlagsBit NONE     = hs__mlirArithFastMathFlags__none
+fastMathFlagsBit REASSOC  = hs__mlirArithFastMathFlags__reassoc
+fastMathFlagsBit NNAN     = hs__mlirArithFastMathFlags__nnan
+fastMathFlagsBit NINF     = hs__mlirArithFastMathFlags__ninf
+fastMathFlagsBit NSZ      = hs__mlirArithFastMathFlags__nsz
+fastMathFlagsBit ARCP     = hs__mlirArithFastMathFlags__arcp
+fastMathFlagsBit CONTRACT = hs__mlirArithFastMathFlags__contract
+fastMathFlagsBit AFN      = hs__mlirArithFastMathFlags__afn
 
-fastMathFlagsNone :: FastMathFlags
-fastMathFlagsNone = FastMathFlags mlirArithFastMathFlags__none
-fastMathFlagsReassoc :: FastMathFlags
-fastMathFlagsReassoc = FastMathFlags mlirArithFastMathFlags__reassoc
-fastMathFlagsNnan :: FastMathFlags
-fastMathFlagsNnan = FastMathFlags mlirArithFastMathFlags__nnan
-fastMathFlagsNinf :: FastMathFlags
-fastMathFlagsNinf = FastMathFlags mlirArithFastMathFlags__ninf
-fastMathFlagsNsz :: FastMathFlags
-fastMathFlagsNsz = FastMathFlags mlirArithFastMathFlags__nsz
-fastMathFlagsArcp :: FastMathFlags
-fastMathFlagsArcp = FastMathFlags mlirArithFastMathFlags__arcp
-fastMathFlagsContract :: FastMathFlags
-fastMathFlagsContract = FastMathFlags mlirArithFastMathFlags__contract
-fastMathFlagsAfn :: FastMathFlags 
-fastMathFlagsAfn = FastMathFlags mlirArithFastMathFlags__afn
+instance IsList FastMathFlagsAttr where
+  type Item FastMathFlagsAttr = FastMathFlags
 
-fastMathFlagsAttrGet :: FastMathFlags -> FastMathFlagsAttr
-fastMathFlagsAttrGet (FastMathFlags flags) = Attribute $ \ctx ->
-  mlirArithFastMathFlagsAttrGet' ctx flags
+  fromList (fmap fastMathFlagsBit -> flags) = FastMathFlagsAttr $ foldr (.|.) hs__mlirArithFastMathFlags__none flags
+  toList (FastMathFlagsAttr flags) = filter (\ (fastMathFlagsBit -> b) -> (flags .&. b) /= 0 ) [NONE, REASSOC, NNAN, NINF, NSZ, ARCP, CONTRACT, AFN]
 
+newtype FastMathFlagsAttr = FastMathFlagsAttr Word32
+instance AttrGet FastMathFlagsAttr where
+  attrGet (FastMathFlagsAttr flags) c = fastMathFlagsAttrGet c flags
 
-type CmpIPredicateAttr = Attribute
-foreign import ccall unsafe "hs__mlirArithCmpIPredicateAttrGet"
-  mlirArithCmpIPredicateAttrGet' :: C.Context -> Word64 -> IO C.Attribute
-cmpIPredicateAttrGet :: CmpIPredicate -> CmpIPredicateAttr
-cmpIPredicateAttrGet (CmpIPredicate val) = Attribute $ \ctx ->
-  mlirArithCmpIPredicateAttrGet' ctx val
-  
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__eq"
-  mlirArithCmpIPredicate__eq :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__ne"
-  mlirArithCmpIPredicate__ne :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__slt"
-  mlirArithCmpIPredicate__slt :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__sle"
-  mlirArithCmpIPredicate__sle :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__sgt"
-  mlirArithCmpIPredicate__sgt :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__sge"
-  mlirArithCmpIPredicate__sge :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__ult"
-  mlirArithCmpIPredicate__ult :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__ule"
-  mlirArithCmpIPredicate__ule :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__ugt"
-  mlirArithCmpIPredicate__ugt :: Word64
-foreign import ccall unsafe "hs__mlirArithCmpIPredicate__uge"
-  mlirArithCmpIPredicate__uge :: Word64
-newtype CmpIPredicate = CmpIPredicate Word64
+data CmpIPredicateAttr = IPredEQ | IPredNE | IPredSLT | IPredSLE | IPredSGT | IPredSGE | IPredULT | IPredULE | IPredUGT | IPredUGE
+instance AttrGet CmpIPredicateAttr where
+  attrGet IPredEQ  = hs__mlirArithCmpIPredicate__eq
+  attrGet IPredNE  = hs__mlirArithCmpIPredicate__ne
+  attrGet IPredSLT = hs__mlirArithCmpIPredicate__slt
+  attrGet IPredSLE = hs__mlirArithCmpIPredicate__sle
+  attrGet IPredSGT = hs__mlirArithCmpIPredicate__sgt
+  attrGet IPredSGE = hs__mlirArithCmpIPredicate__sge
+  attrGet IPredULT = hs__mlirArithCmpIPredicate__ult
+  attrGet IPredULE = hs__mlirArithCmpIPredicate__ule
+  attrGet IPredUGT = hs__mlirArithCmpIPredicate__ugt
+  attrGet IPredUGE = hs__mlirArithCmpIPredicate__uge
 
-cmpIPredicateEq :: CmpIPredicate
-cmpIPredicateEq = CmpIPredicate mlirArithCmpIPredicate__eq
-cmpIPredicateNe :: CmpIPredicate
-cmpIPredicateNe = CmpIPredicate mlirArithCmpIPredicate__ne
-cmpIPredicateSlt :: CmpIPredicate
-cmpIPredicateSlt = CmpIPredicate mlirArithCmpIPredicate__slt
-cmpIPredicateSle :: CmpIPredicate
-cmpIPredicateSle = CmpIPredicate mlirArithCmpIPredicate__sle
-cmpIPredicateSgt :: CmpIPredicate
-cmpIPredicateSgt = CmpIPredicate mlirArithCmpIPredicate__sgt
-cmpIPredicateSge :: CmpIPredicate
-cmpIPredicateSge = CmpIPredicate mlirArithCmpIPredicate__sge
-cmpIPredicateUlt :: CmpIPredicate
-cmpIPredicateUlt = CmpIPredicate mlirArithCmpIPredicate__ult
-cmpIPredicateUle :: CmpIPredicate
-cmpIPredicateUle = CmpIPredicate mlirArithCmpIPredicate__ule
-cmpIPredicateUgt :: CmpIPredicate
-cmpIPredicateUgt = CmpIPredicate mlirArithCmpIPredicate__ugt
-cmpIPredicateUge :: CmpIPredicate
-cmpIPredicateUge = CmpIPredicate mlirArithCmpIPredicate__uge
-
-type CmpFPredicateAttr = Attribute
-newtype CmpFPredicate = CmpFPredicate Word64
-foreign import ccall unsafe "hs__mlirArithCmpFPredicateAttrGet"
-  mlirArithCmpFPredicateAttrGet' :: C.Context -> Word64 -> IO C.Attribute
-cmpFPredicateAttrGet :: CmpFPredicate -> CmpFPredicateAttr
-cmpFPredicateAttrGet (CmpFPredicate val) = Attribute $ \ctx ->
-  mlirArithCmpFPredicateAttrGet' ctx val
-
-foreign import ccall "hs__mlirArithCmpFPredicate__AlwaysFalse" mlirArithCmpFPredicate__AlwaysFalse :: Word64
-cmpFPredicateAlwaysFalse :: CmpFPredicate
-cmpFPredicateAlwaysFalse = CmpFPredicate mlirArithCmpFPredicate__AlwaysFalse
-foreign import ccall "hs__mlirArithCmpFPredicate__OEQ" mlirArithCmpFPredicate__OEQ :: Word64
-cmpFPredicateOEQ :: CmpFPredicate
-cmpFPredicateOEQ = CmpFPredicate mlirArithCmpFPredicate__OEQ
-foreign import ccall "hs__mlirArithCmpFPredicate__OGT" mlirArithCmpFPredicate__OGT :: Word64
-cmpFPredicateOGT :: CmpFPredicate
-cmpFPredicateOGT = CmpFPredicate mlirArithCmpFPredicate__OGT
-foreign import ccall "hs__mlirArithCmpFPredicate__OGE" mlirArithCmpFPredicate__OGE :: Word64
-cmpFPredicateOGE :: CmpFPredicate
-cmpFPredicateOGE = CmpFPredicate mlirArithCmpFPredicate__OGE
-foreign import ccall "hs__mlirArithCmpFPredicate__OLT" mlirArithCmpFPredicate__OLT :: Word64
-cmpFPredicateOLT :: CmpFPredicate
-cmpFPredicateOLT = CmpFPredicate mlirArithCmpFPredicate__OLT
-foreign import ccall "hs__mlirArithCmpFPredicate__OLE" mlirArithCmpFPredicate__OLE :: Word64
-cmpFPredicateOLE :: CmpFPredicate
-cmpFPredicateOLE = CmpFPredicate mlirArithCmpFPredicate__OLE
-foreign import ccall "hs__mlirArithCmpFPredicate__ONE" mlirArithCmpFPredicate__ONE :: Word64
-cmpFPredicateONE :: CmpFPredicate
-cmpFPredicateONE = CmpFPredicate mlirArithCmpFPredicate__ONE
-foreign import ccall "hs__mlirArithCmpFPredicate__ORD" mlirArithCmpFPredicate__ORD :: Word64
-cmpFPredicateORD :: CmpFPredicate
-cmpFPredicateORD = CmpFPredicate mlirArithCmpFPredicate__ORD
-foreign import ccall "hs__mlirArithCmpFPredicate__UEQ" mlirArithCmpFPredicate__UEQ :: Word64
-cmpFPredicateUEQ :: CmpFPredicate
-cmpFPredicateUEQ = CmpFPredicate mlirArithCmpFPredicate__UEQ
-foreign import ccall "hs__mlirArithCmpFPredicate__UGT" mlirArithCmpFPredicate__UGT :: Word64
-cmpFPredicateUGT :: CmpFPredicate
-cmpFPredicateUGT = CmpFPredicate mlirArithCmpFPredicate__UGT
-foreign import ccall "hs__mlirArithCmpFPredicate__UGE" mlirArithCmpFPredicate__UGE :: Word64
-cmpFPredicateUGE :: CmpFPredicate
-cmpFPredicateUGE = CmpFPredicate mlirArithCmpFPredicate__UGE
-foreign import ccall "hs__mlirArithCmpFPredicate__ULT" mlirArithCmpFPredicate__ULT :: Word64
-cmpFPredicateULT :: CmpFPredicate
-cmpFPredicateULT = CmpFPredicate mlirArithCmpFPredicate__ULT
-foreign import ccall "hs__mlirArithCmpFPredicate__ULE" mlirArithCmpFPredicate__ULE :: Word64
-cmpFPredicateULE :: CmpFPredicate
-cmpFPredicateULE = CmpFPredicate mlirArithCmpFPredicate__ULE
-foreign import ccall "hs__mlirArithCmpFPredicate__UNE" mlirArithCmpFPredicate__UNE :: Word64
-cmpFPredicateUNE :: CmpFPredicate
-cmpFPredicateUNE = CmpFPredicate mlirArithCmpFPredicate__UNE
-foreign import ccall "hs__mlirArithCmpFPredicate__UNO" mlirArithCmpFPredicate__UNO :: Word64
-cmpFPredicateUNO :: CmpFPredicate
-cmpFPredicateUNO = CmpFPredicate mlirArithCmpFPredicate__UNO
-foreign import ccall "hs__mlirArithCmpFPredicate__AlwaysTrue" mlirArithCmpFPredicate__AlwaysTrue :: Word64
-cmpFPredicateAlwaysTrue :: CmpFPredicate
-cmpFPredicateAlwaysTrue = CmpFPredicate mlirArithCmpFPredicate__AlwaysTrue
+data CmpFPredicateAttr = FPredAlwaysFalse | FPredOEQ | FPredOGT | FPredOGE | FPredOLT | FPredOLE | FPredONE 
+                   | FPredORD | FPredUEQ | FPredUGT | FPredUGE | FPredULT | FPredULE | FPredUNE | FPredUNO | FPredAlwaysTrue
+instance AttrGet CmpFPredicateAttr where
+  attrGet FPredAlwaysFalse = hs__mlirArithCmpFPredicate__AlwaysFalse
+  attrGet FPredOEQ         = hs__mlirArithCmpFPredicate__OEQ       
+  attrGet FPredOGT         = hs__mlirArithCmpFPredicate__OGT       
+  attrGet FPredOGE         = hs__mlirArithCmpFPredicate__OGE       
+  attrGet FPredOLT         = hs__mlirArithCmpFPredicate__OLT       
+  attrGet FPredOLE         = hs__mlirArithCmpFPredicate__OLE       
+  attrGet FPredONE         = hs__mlirArithCmpFPredicate__ONE       
+  attrGet FPredORD         = hs__mlirArithCmpFPredicate__ORD       
+  attrGet FPredUEQ         = hs__mlirArithCmpFPredicate__UEQ       
+  attrGet FPredUGT         = hs__mlirArithCmpFPredicate__UGT       
+  attrGet FPredUGE         = hs__mlirArithCmpFPredicate__UGE       
+  attrGet FPredULT         = hs__mlirArithCmpFPredicate__ULT       
+  attrGet FPredULE         = hs__mlirArithCmpFPredicate__ULE       
+  attrGet FPredUNE         = hs__mlirArithCmpFPredicate__UNE       
+  attrGet FPredUNO         = hs__mlirArithCmpFPredicate__UNO       
+  attrGet FPredAlwaysTrue  = hs__mlirArithCmpFPredicate__AlwaysTrue

@@ -78,3 +78,60 @@ void *hs__mlirOperationWriteBytecode(MlirOperation op, size_t *length) {
     *length = buffer.byte_wrote;
     return realloc(buffer.buffer, buffer.byte_wrote);
 }
+
+
+
+
+
+
+
+typedef struct {
+    char *buffer;
+    size_t olddatalen;
+    size_t buffersize;
+    size_t requiredsize;
+} buffer_writer_data;
+static void buffer_writer_callback(MlirStringRef ref, void *userdata) {
+    buffer_writer_data *args = userdata;
+    args->requiredsize += ref.length;
+    
+    // if segment is already writen last time, then skip
+    if (args->olddatalen) {
+        size_t skip = ref.length < args->olddatalen ? ref.length : args->olddatalen;
+        ref.length -= skip;
+        ref.data += skip;
+
+        skip = skip < args->buffersize ? skip : args->buffersize;
+        args->buffersize -= skip;
+        args->buffer += skip;
+    }
+
+    // buffer should ptr to undefined memory (i.e no writen data)
+    if (args->buffersize == 0 || ref.length == 0) 
+        return;
+    
+    // writing
+    if (args->buffersize < ref.length) {
+        memcpy(args->buffer, ref.data, args->buffersize);
+        args->buffersize = 0;
+    } else {
+        memcpy(args->buffer, ref.data, ref.length);
+        args->buffersize -= ref.length;
+        args->buffer += ref.length;
+    }
+}
+
+// NOTE: The cost of moving buffer might be bigger than the cost of invoking this function twice
+// TODO: Profile
+size_t write_bytecode(MlirOperation op, size_t olddatalen, size_t buffersize, void *buffer) {
+    buffer_writer_data data = {
+        .buffer = buffer, .olddatalen = olddatalen, .buffersize = buffersize, .requiredsize = 0
+    };
+    mlirOperationWriteBytecode(op, buffer_writer_callback, &data);
+    return data.requiredsize;
+}
+
+
+
+
+
