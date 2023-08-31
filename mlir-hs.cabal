@@ -446,9 +446,9 @@ library
 
     include-dirs:     cpphs/
                       cbits/
-                      /home/cha0s/.local/include 
+                      -- /home/cha0s/.local/include 
                       -- Hack to get around hls fuckery
-    extra-lib-dirs:   /home/cha0s/.local/lib
+    -- extra-lib-dirs:   /home/cha0s/.local/lib
 
     c-sources:        cbits/FFI/IR.c
                       cbits/FFI/builtinTypes.c

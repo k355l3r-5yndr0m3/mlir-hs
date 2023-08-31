@@ -14,10 +14,8 @@ echo "ld-options:" >> ${BUILDINFO}
 echo "$(llvm-config --ldflags | sed -e 's/-L[\/A-Za-z0-9.]* //g' | sed -e 's/ *//' | sed -e 's/  */\n/g' | sed -e 's/^/    /g')" >> ${BUILDINFO}
 
 echo "extra-lib-dirs: $(llvm-config --libdir)" >> ${BUILDINFO}
-# echo "$(llvm-config --libdir | sed -e 's/  */\n/g' | sed -e 's/^/    /g')" >> ${BUILDINFO}
 
 echo "include-dirs: $(llvm-config --includedir)" >> ${BUILDINFO}
-# echo "$(llvm-config --includedir | sed -e 's/  */\n/g' | sed -e 's/^/    /g')" >> ${BUILDINFO}
 
 # Setup symlink to *.td files
 ln -sf $(llvm-config --includedir)
