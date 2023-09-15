@@ -114,6 +114,8 @@ foreign import ccall unsafe "hs__mlirIdentifierGet"
 
 
 -- User defined
-foreign import ccall unsafe "write_bytecode"
-  writeByteCode :: Operation -> CSize -> CSize -> MutableByteArray# RealWorld -> IO CSize
+-- foreign import ccall unsafe "write_bytecode"
+--   writeByteCode :: Operation -> CSize -> CSize -> MutableByteArray# RealWorld -> IO CSize
+foreign import ccall unsafe "hs__mlirOperationWriteBytecode"
+  writeByteCode :: Operation -> CSize -> Ptr Char -> IO CSize
 

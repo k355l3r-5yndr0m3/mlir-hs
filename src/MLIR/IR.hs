@@ -1,4 +1,3 @@
-{-# LANGUAGE MagicHash #-}
 module MLIR.IR where
 import MLIR.C.IR as C
 
@@ -6,8 +5,9 @@ import Control.Monad
 import Data.Primitive.ByteArray
 import System.IO
 import Control.Exception (assert)
-import Foreign (withArrayLen, withArray)
+import Foreign (withArrayLen, withArray, castPtr)
 import Foreign.C.Types (CIntPtr)
+import Data.Primitive.ByteArray
 
 newtype ContextM a = ContextM (Context -> IO a)
 contextRunIO :: IO a -> ContextM a
@@ -133,15 +133,22 @@ moduleGetOperation = C.moduleGetOperation
 
 -- ByteCode
 newtype ByteCode = ByteCode ByteArray
-writeByteCode :: Operation -> ContextM ByteCode
+writeByteCode :: Operation -> ContextM ByteCode 
 writeByteCode operation = contextRunIO $ do 
-  buffer0@(MutableByteArray buffer0#) <- newPinnedByteArray initBufferSize
-  requiredSize <- C.writeByteCode operation 0 initBufferSize buffer0#
-  buffer1@(MutableByteArray buffer1#) <- resizeMutableByteArray buffer0 (fromIntegral requiredSize)
-  when (requiredSize > initBufferSize) (void $ C.writeByteCode operation initBufferSize requiredSize buffer1#)
-  ByteCode <$> unsafeFreezeByteArray buffer1
-  where initBufferSize :: Num i => i
-        initBufferSize = 512
+  buffer0 <- newPinnedByteArray initialBufferSize  
+  requiredSize <- C.writeByteCode operation initialBufferSize (castPtr $ mutableByteArrayContents buffer0) 
+  if requiredSize > initialBufferSize then do 
+    buffer1 <- newPinnedByteArray (fromIntegral requiredSize)
+    _ <- C.writeByteCode operation requiredSize (castPtr $ mutableByteArrayContents buffer1)
+    ByteCode <$> unsafeFreezeByteArray buffer1
+  else 
+    if requiredSize == initialBufferSize then
+      ByteCode <$> unsafeFreezeByteArray buffer0
+    else do
+      shrinkMutableByteArray buffer0 (fromIntegral requiredSize)
+      ByteCode <$> unsafeFreezeByteArray buffer0
+  where initialBufferSize :: Num i => i
+        initialBufferSize = 512
 
 instance Show ByteCode where 
   show (ByteCode byteCode) = show byteCode
