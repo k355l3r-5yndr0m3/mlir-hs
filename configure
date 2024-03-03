@@ -1,0 +1,7 @@
+#!/bin/sh
+OUTPUT=mlir-hs.buildinfo
+
+echo "--Generated on $(date)" > ${OUTPUT}
+
+echo "include-dirs: $(llvm-config --includedir) " >> ${OUTPUT}
+echo "extra-lib-dirs: $(llvm-config --libdir) " >> ${OUTPUT}
