@@ -1,21 +1,15 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE  ViewPatterns #-}
-module MLIR.IR where
-import MLIR.FFI.Finalizers
+module MLIR.IR 
+( module MLIR.IR
+, module MLIR.FFI.IR 
+) where
 import MLIR.FFI.IR
 
-import Control.Monad
-import Control.Monad.Reader
 import Control.Exception
 
-import Data.Coerce
 import Data.Primitive
-import Data.Void
 import Data.IORef
 
-import Foreign hiding (void)
-
-import GHC.ForeignPtr
 
 -- Functionalities:
 --   + Constructing IR
@@ -32,53 +26,29 @@ import GHC.ForeignPtr
 -- Context bracket
 type Bytecode = ByteArray
 
-type Context = MlirContext
-type Dialect = MlirDialect
-type DialectHandle = MlirDialectHandle
-type DialectRegistry = MlirDialectRegistry
-type Location = MlirLocation
-type Module = MlirModule
-type Block = MlirBlock
-type Value = MlirValue
-type Type = MlirType
-type Region = MlirRegion
-type NamedAttribute = MlirNamedAttribute
-type Operation = MlirOperation
-type Attribute = MlirAttribute
+withMlirContext :: (MlirContext -> IO a) -> IO a
+withMlirContext = bracket mlirContextCreate mlirContextDestroy
 
-withContext :: (Context -> IO a) -> IO a
-withContext = bracket mlirContextCreate mlirContextDestroy
+withMlirContextThreading :: Bool -> (MlirContext -> IO a) -> IO a
+withMlirContextThreading threadingEnabled = bracket (mlirContextCreateWithThreading threadingEnabled) mlirContextDestroy
 
-withContextThreading :: Bool -> (Context -> IO a) -> IO a
-withContextThreading threadingEnabled = bracket (mlirContextCreateWithThreading threadingEnabled) mlirContextDestroy
-
-withContextRegistry :: DialectRegistry -> Bool -> (Context -> IO a) -> IO a
-withContextRegistry registry threadingEnabled = bracket (mlirContextCreateWithRegistry registry threadingEnabled) mlirContextDestroy
-
--- Dialect handle
-dialectHandleLoadDialect :: DialectHandle -> Context -> IO Dialect
-dialectHandleLoadDialect = mlirDialectHandleLoadDialect
-
-dialectHandleRegisterDialect :: DialectHandle -> Context -> IO ()
-dialectHandleRegisterDialect = mlirDialectHandleRegisterDialect
-
-dialectHandleInsertDialect :: MlirDialectHandle -> MlirDialectRegistry -> IO ()
-dialectHandleInsertDialect = mlirDialectHandleInsertDialect
+withMlirContextRegistry :: MlirDialectRegistry -> Bool -> (MlirContext -> IO a) -> IO a
+withMlirContextRegistry registry threadingEnabled = bracket (mlirContextCreateWithRegistry registry threadingEnabled) mlirContextDestroy
 
 -- Dialect registry backet
-withDialectRegistry :: (DialectRegistry -> IO a) -> IO a
-withDialectRegistry = bracket mlirDialectRegistryCreate mlirDialectRegistryDestroy
+withMlirDialectRegistry :: (MlirDialectRegistry -> IO a) -> IO a
+withMlirDialectRegistry = bracket mlirDialectRegistryCreate mlirDialectRegistryDestroy
 
 -- Module bracket
-withModule :: Location -> (Module -> IO a) -> IO a
-withModule location = bracket (mlirModuleCreateEmpty location) mlirModuleDestroy
+withMlirModule :: MlirLocation -> (MlirModule -> IO a) -> IO a
+withMlirModule location = bracket (mlirModuleCreateEmpty location) mlirModuleDestroy
 
-moduleEmitBytecode :: Module -> IO Bytecode
-moduleEmitBytecode = operationEmitBytecode . mlirModuleGetOperation
+mlirModuleEmitBytecode :: MlirModule -> IO Bytecode
+mlirModuleEmitBytecode = operationEmitBytecode . mlirModuleGetOperation
 
 -- Operation bracket (always insert into the block)
-blockAddOperation :: Block -> String -> Location -> [Type] -> [Value] -> [Region -> IO ()] -> [Block] -> [NamedAttribute] -> Bool -> IO (Operation, [Value])
-blockAddOperation block opname location results operands regions_ successors attributes inference = do
+mlirBlockAddOperation :: MlirBlock -> String -> MlirLocation -> [MlirType] -> [MlirValue] -> [MlirRegion -> IO ()] -> [MlirBlock] -> [MlirNamedAttribute] -> Bool -> IO (MlirOperation, [MlirValue])
+mlirBlockAddOperation block opname location results operands regions_ successors attributes inference = do
   regions   <- mapM (\ rbody -> do r <- mlirRegionCreate; rbody r; return r) regions_
   operation <- mlirOperationCreate opname
                                    location
@@ -91,11 +61,11 @@ blockAddOperation block opname location results operands regions_ successors att
   mlirBlockAppendOwnedOperation block operation
   return (operation, map (mlirOperationGetResult operation) $ take (mlirOperationGetNumResults operation) [0..])
 
-blockAddOperation_ :: Block -> String -> Location -> [Type] -> [Value] -> [Region -> IO ()] -> [Block] -> [NamedAttribute] -> Bool -> IO [Value]
+blockAddOperation_ :: MlirBlock -> String -> MlirLocation -> [MlirType] -> [MlirValue] -> [MlirRegion -> IO ()] -> [MlirBlock] -> [MlirNamedAttribute] -> Bool -> IO [MlirValue]
 blockAddOperation_ block opname location results operands regions successors attributes inference =
-  snd <$> blockAddOperation block opname location results operands regions successors attributes inference
+  snd <$> mlirBlockAddOperation block opname location results operands regions successors attributes inference
 
-operationEmitBytecode :: Operation -> IO Bytecode
+operationEmitBytecode :: MlirOperation -> IO Bytecode
 operationEmitBytecode operation = do
   sizeRef <- newIORef 0
   let sizeCallback _ len =
@@ -113,8 +83,8 @@ operationEmitBytecode operation = do
   unsafeFreezeByteArray bytecode
 
 -- Blocks
-regionAddBlock :: Region -> [(Type, Location)] -> IO Block
-regionAddBlock region arguments = do
+mlirRegionAddBlock :: MlirRegion -> [(MlirType, MlirLocation)] -> IO MlirBlock
+mlirRegionAddBlock region arguments = do
   block <- mlirBlockCreate arguments
   mlirRegionAppendOwnedBlock region block
   return block

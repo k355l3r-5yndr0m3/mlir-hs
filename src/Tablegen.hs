@@ -185,9 +185,50 @@ instance RecordClass Variadic where
     | isInstanceof @Variadic r = Just undefined
     | otherwise = Nothing
 
-data VariadicOfVariadic
+newtype VariadicOfVariadic = VariadicOfVariadic
+  { variadicOfVariadicSegmentAttrName :: Text
+  }
 instance RecordClass VariadicOfVariadic where
   className = "VariadicOfVariadic"
   reifyRecord r
-    | isInstanceof @VariadicOfVariadic r = Just undefined
+    | isInstanceof @VariadicOfVariadic r =
+      do
+        ValString attrName <- M.lookup "segmentAttrName" $ arguments r
+        return $ VariadicOfVariadic attrName
+    | otherwise = Nothing
+
+data Optional
+instance RecordClass Optional where
+  className = "Optional"
+  reifyRecord r
+    | isInstanceof @Optional r = Just undefined
+    | otherwise = Nothing
+
+
+data SameVariadicResultSize
+instance RecordClass SameVariadicResultSize where
+  className = "SameVariadicResultSize"
+  reifyRecord r
+    | isInstanceof @SameVariadicResultSize r = Just undefined
+    | otherwise = Nothing
+
+data SameVariadicOperandSize
+instance RecordClass SameVariadicOperandSize where
+  className = "SameVariadicOperandSize"
+  reifyRecord r
+    | isInstanceof @SameVariadicOperandSize r = Just undefined
+    | otherwise = Nothing
+
+data AttrSizedOperandSegments
+instance RecordClass AttrSizedOperandSegments where
+  className = "AttrSizedOperandSegments"
+  reifyRecord r
+    | isInstanceof @AttrSizedOperandSegments r = Just undefined
+    | otherwise = Nothing
+
+data OptionalAttr
+instance RecordClass OptionalAttr where
+  className = "OptionalAttr"
+  reifyRecord r
+    | isInstanceof @OptionalAttr r = Just undefined
     | otherwise = Nothing

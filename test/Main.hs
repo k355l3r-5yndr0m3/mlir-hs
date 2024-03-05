@@ -1,7 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main (main) where
 import Control.Monad.IO.Class
-import MLIR.Dialect.Func
 import MLIR.IR
 import MLIR.TH
 
@@ -14,5 +13,6 @@ main = do
   return ()
 
 $(generateMlirDialect "mlir/Dialect/Func/IR/FuncOps.td")
-
+-- $(generateMlirDialect "mlir/Dialect/OpenMP/OpenMPOps.td")
+--- $(generateMlirDialect "mlir/Dialect/MLProgram/IR/MLProgramOps.td")
 

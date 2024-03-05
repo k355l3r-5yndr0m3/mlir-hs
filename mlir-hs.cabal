@@ -54,13 +54,27 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+common debug
+    ghc-options: -ddump-splices
+                 -ddump-to-file
+
 library
     -- Import common warning flags.
-    import:           warnings
+    import:           warnings,
+                      debug
+
+    c-sources:        cbit/callback.c
+                      cbit/wrapper.c
 
     -- Modules exported by the library.
     exposed-modules:  MLIR
                       MLIR.TH
+                      MLIR.IR
+                      MLIR.BuiltinTypes
+                      MLIR.Dialect.Func
+
+    -- TODO: Remove the Finalizers module
+    other-modules:    MLIR.FFI.Finalizers
                       MLIR.FFI.Support
                       MLIR.FFI.AffineExpr
                       MLIR.FFI.AffineMap
@@ -68,12 +82,8 @@ library
                       MLIR.FFI.BuiltinTypes
                       MLIR.FFI.BuiltinAttributes
                       MLIR.FFI.Marshal
-                      MLIR.BuiltinTypes
-                      MLIR.Dialect.Func
-                      MLIR.IR
-
-    other-modules:    MLIR.FFI.Finalizers
                       Tablegen
+
     
 
     -- LANGUAGE extensions used by modules in this package.
@@ -95,8 +105,7 @@ library
     -- Directories containing source files.
     hs-source-dirs:   src
 
-    c-sources:        cbit/wrapper.c
-                      cbit/callback.c
+
     include-dirs:     cbit
 
 
@@ -107,8 +116,6 @@ library
                       MLIRSupport
                       MLIRIR
                       MLIRCAPIIR
-                      MLIRCAPIFunc
-                      MLIRFuncDialect
 
     -- TODO: Remove this
     extra-lib-dirs:   /home/cha0s/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib
@@ -117,7 +124,8 @@ library
 
 test-suite mlir-hs-test
     -- Import common warning flags.
-    import:           warnings
+    import:           warnings,
+                      debug
 
     -- Base language which the package is written in.
     default-language: GHC2021

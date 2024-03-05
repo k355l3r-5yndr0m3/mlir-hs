@@ -48,7 +48,11 @@ mlirStringCallback__cwrap strRefData strRefLength callbackPtr = do
   callback :: MlirStringCallback <- deRefStablePtr $ castPtrToStablePtr callbackPtr
   callback (castPtr strRefData :: Ptr Word8) (fromIntegral strRefLength :: Int)
 
-foreign import ccall "&mlirStringCallback" mlirStringCallbackFunPtr :: FunPtr (MlirStringRef -> Ptr Void -> IO ())
+-- NOTE: "&" must not be added because then template-haskell will freak out
+-- mlirStringCallback__hswrap return a function pointer
+foreign import ccall "mlirStringCallback__hswrap" mlirStringCallbackFunPtr :: FunPtr (MlirStringRef -> Ptr Void -> IO ())
+-- mlirStringCallbackFunPtr :: FunPtr (MlirStringRef -> Ptr Void -> IO ())
+-- mlirStringCallbackFunPtr = undefined
 
 {-# INLINE withMlirStringCallback #-}
 withMlirStringCallback :: MlirStringCallback -> ((FunPtr (Ptr () {- c2hs think all structs are ptr () -} -> Ptr () -> IO ()), Ptr () {- StablePtr MlirStringCallback -}) -> IO a) -> IO a

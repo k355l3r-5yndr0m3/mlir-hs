@@ -3,6 +3,8 @@ module MLIR.FFI.Marshal
 , module MLIR.FFI.Marshal
 ) where
 import Foreign
+import MLIR.FFI.Support
+import Data.Void
 import Data.Coerce
 import Data.Primitive
 import Control.Exception (assert)
@@ -23,7 +25,7 @@ marshalStorableArrayLen = marshalArrayLen id (,)
 marshalBoolArrayLen :: (Num a, Storable a, Num b) => [Bool] -> ((b, Ptr a) -> IO c) -> IO c
 marshalBoolArrayLen = marshalArrayLen fromBool (,)
 
-{-# INLIME marshalFloatArrayLen #-}
+{-# INLINE marshalFloatArrayLen #-}
 marshalFloatArrayLen :: (Real a, Fractional b, Storable b, Num c) => [a] -> ((c, Ptr b) -> IO d) -> IO d
 marshalFloatArrayLen = marshalArrayLen realToFrac (,)
 
@@ -62,3 +64,4 @@ withStablePtr hsobj proc = do
   result <- proc $ castStablePtrToPtr ptr
   freeStablePtr ptr
   return result
+

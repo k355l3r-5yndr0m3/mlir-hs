@@ -33,3 +33,4 @@ MlirAttribute mlirStringAttrTypedGet__hswrap(MlirType type, const char *str_data
 void mlirStringAttrGetValue__hswrap(MlirAttribute attr, MlirStringRef *output) { *output = mlirStringAttrGetValue(attr); }
 
 void mlirIdentifierStr__hswrap(MlirIdentifier ident, MlirStringRef *output) { *output = mlirIdentifierStr(ident); }
+
