@@ -1,6 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
-module MLIR.Dialect.Func where
+module MLIR.Dialect.Func
+( module MLIR.Dialect.Func
+, module Extra
+)where
+import MLIR.Dialect.Func.Extra as Extra
 import MLIR.FFI.IR
 import MLIR.TH
 

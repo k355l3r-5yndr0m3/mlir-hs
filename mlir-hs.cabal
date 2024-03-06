@@ -99,6 +99,9 @@ library
                       MLIR.FFI.BuiltinTypes
                       MLIR.FFI.BuiltinAttributes
                       MLIR.FFI.Marshal
+                      MLIR.Dialect.Func.Extra
+                      MLIR.Dialect.LLVM.Extra
+                      MLIR.Dialect.PDL.Extra
                       Tablegen
 
     -- LANGUAGE extensions used by modules in this package.

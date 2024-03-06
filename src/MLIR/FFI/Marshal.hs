@@ -2,12 +2,12 @@ module MLIR.FFI.Marshal
 ( module Data.Primitive
 , module MLIR.FFI.Marshal
 ) where
-import Foreign
-import MLIR.FFI.Support
-import Data.Void
+import Control.Exception (assert)
+
 import Data.Coerce
 import Data.Primitive
-import Control.Exception (assert)
+
+import Foreign
 
 {-# INLINE marshalArrayLen #-}
 marshalArrayLen :: (Storable b, Num c) => (a -> b) -> (c -> Ptr b -> d) -> [a] -> (d -> IO e) -> IO e 
@@ -28,7 +28,6 @@ marshalBoolArrayLen = marshalArrayLen fromBool (,)
 {-# INLINE marshalFloatArrayLen #-}
 marshalFloatArrayLen :: (Real a, Fractional b, Storable b, Num c) => [a] -> ((c, Ptr b) -> IO d) -> IO d
 marshalFloatArrayLen = marshalArrayLen realToFrac (,)
-
 
 {-# INLINE marshalPrimArray #-}
 marshalPrimArray :: (Prim a, Num b, Coercible a c) => PrimArray a -> ((b, Ptr c) -> IO d) -> IO d
