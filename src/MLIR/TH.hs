@@ -27,6 +27,7 @@ import Data.Text      (unpack, Text, map)
 import Data.Maybe     (fromMaybe, catMaybes)
 import Data.Bifunctor (first, second)
 import Data.Primitive.PrimArray (primArrayFromListN, primArrayFromList)
+import Data.List      (genericLength)
 
 import System.Process (shell, readCreateProcess)
 import System.FilePath
@@ -72,18 +73,29 @@ getOperationTraits tblgen op =
 
 generateOperation' :: Tablegen -> Op -> DecsQ
 generateOperation' tblgen operation = do
-  args       <- maybeFail "args"       $ fmap V.toList $ mapM getDagValueName $ dagArgs $ opArguments  operation
-  results    <- maybeFail "results"    $ fmap (fmap (defInstanceof @Variadic tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opResults    operation
-  regions    <- maybeFail "regions"    $ fmap (fmap (defInstanceof @VariadicRegion tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opRegions    operation
-  successors <- maybeFail "successors" $ fmap (fmap (defInstanceof @VariadicSuccessor tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opSuccessors operation
+  Dialect dn <- maybeFail (unpack (opOpName operation) ++ " dialect"   ) $ reifyRecord =<< lookupDef tblgen (opOpDialect operation)
+  args       <- maybeFail (unpack (opOpName operation) ++ " args"      ) $ fmap V.toList $ mapM getDagValueMaybeName $ dagArgs $ opArguments  operation
+  results    <- maybeFail (unpack (opOpName operation) ++ " results"   ) $ fmap (fmap (defInstanceof @Variadic tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opResults    operation
+  regions    <- maybeFail (unpack (opOpName operation) ++ " regions"   ) $ fmap (fmap (defInstanceof @VariadicRegion tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opRegions    operation
+  successors <- maybeFail (unpack (opOpName operation) ++ " successors") $ fmap (fmap (defInstanceof @VariadicSuccessor tblgen) . V.toList) $ mapM getDagValue $ dagArgs $ opSuccessors operation
+  -- The arguments to the builder is in (context -> block -> location -> [operands] -> [attributes] -> [Regions] -> [Successor] -> [Return types] -> )
 
-  let (operands, attributes) = partitionEithers $ fmap (\ (v, n) -> 
-                                                          if defInstanceof @TypeConstraint tblgen v then
-                                                            Left $ getOperandInfo tblgen v
-                                                          else
-                                                            Right (defInstanceof @OptionalAttr tblgen v, n))
-                                                       args
-      builderType = 
+  (unzip -> (operands, operandNames), attributes) 
+    <- partitionEithers <$> maybeFail (unpack (opOpName operation) ++ " operands and attributes") 
+                                      (mapM (\case (v, Just n)  | defInstanceof @TypeConstraint tblgen v
+                                                                            -> Just $ Left (getOperandInfo tblgen v, n)
+                                                                | otherwise -> Just $ Right (defInstanceof @OptionalAttr tblgen v, n)
+                                                   (v, Nothing) | defInstanceof @TypeConstraint tblgen v 
+                                                                            -> Just $ Left (getOperandInfo tblgen v, "_anonymous_")
+                                                                | otherwise -> Nothing
+                                            ) args)
+  -- let (unzip -> (operands, operandNames), attributes) = partitionEithers $ fmap (\ (v, n) -> 
+  --                                                         if defInstanceof @TypeConstraint tblgen v then
+  --                                                           Left (getOperandInfo tblgen v, n)
+  --                                                         else
+  --                                                           Right (defInstanceof @OptionalAttr tblgen v, n))
+  --                                                      args
+  let builderType = 
         let resultType | null results = [t| IO MlirOperation |]
                        | otherwise    = [t| IO $(foldl (\ t r ->
                                                           if r then
@@ -140,7 +152,7 @@ generateOperation' tblgen operation = do
             | numVariadicResult > 0 =
               do
                 when (numVariadicResult > 1 && not (sameVariadicResultSize traits)) $
-                  fail "Invalid Op: Missing SameVariadicResultSize trait which is required when operation have multiple variadic results"
+                  fail $ "Invalid Op(" <> unpack (opOpName operation) <> "): Missing SameVariadicResultSize trait which is required when operation have multiple variadic results"
                 op_ <- newName "op"
                 rs_ <- newName "rs"
                 sg_ <- newName "sg"
@@ -179,165 +191,169 @@ generateOperation' tblgen operation = do
 
   sequenceA 
     [ sigD (mkName normalizedOpName) builderType
-    , funD (mkName normalizedOpName) [ clause (varP ctx_ : varP block_ : varP loc_ :
-                                                  [ varP n | (_, n)    <- operandVars   ]
-                                               ++ [ varP n | (_, _, n) <- attributeVars ]
-                                               ++ [ varP n | (_, n)    <- regionVars    ]
-                                               ++ [ varP n | (_, n)    <- successorVars ]
-                                               ++ [ varP n | (_, n)    <- rtypeVars     ])
-                                              (normalB $
-                                                 if sameVariadicOperandSize traits then -- TODO: make this less stupid
-                                                   [| $(varE rget_) <$> mlirBlockAddOperation $(varE block_)
-                                                                                              $(litE $ stringL "")
-                                                                                              $(varE loc_)
-                                                                                              $(varE rtyps_)
-                                                                                              $(varE opers_)
-                                                                                              $(varE regs_)
-                                                                                              $(varE succs_)
-                                                                                              $(varE attrs_)
-                                                                                              False
-                                                   |]
-                                                 else 
-                                                   [| $(varE rget_) <$> mlirBlockAddOperation $(varE block_)
-                                                                                              $(litE $ stringL "")
-                                                                                              $(varE loc_)
-                                                                                              $(varE rtyps_)
-                                                                                              (assert $(varE sleng_) $(varE opers_))
-                                                                                              $(varE regs_)
-                                                                                              $(varE succs_)
-                                                                                              $(varE attrs_)
-                                                                                              False
-                                                   |]
-                                              )
-                                              [ valD (varP attrs_)
-                                                     (normalB $ foldr (\ (optional, n, u) e ->
-                                                                         if optional then
-                                                                           [| maybe id ((:) . mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack n))) $(varE u) $e |]
-                                                                         else 
-                                                                           [| mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack n)) $(varE u) : $e |]
-                                                                      )
-                                                                      (if attrSizedOperandSegments traits then [| $(varE segms_) : $(varE vsattrs_) |] else [| $(varE vsattrs_) |]) -- TODO: Move this somewhere else
-                                                                      attributeVars)
-                                                     []
-                                              , valD (varP opers_)
-                                                     (normalB $ foldr (\ (v, n) e -> 
-                                                                         case v of
-                                                                           OpNonVariadic optional
-                                                                             | optional  -> [| maybe id (:) $(varE n) $e |]
-                                                                             | otherwise -> [| $(varE n) : $e |]
-                                                                           OpVariadic    optional Nothing  ->
-                                                                             [| $(if optional then [| fromMaybe [] |] else [| id |]) $(varE n) ++ $e |]
-                                                                           OpVariadic    optional (Just _) ->
-                                                                             [| $(if optional then [| maybe [] concat |] else [| concat |]) $(varE n) ++ $e |]
-                                                                           ) [| [] |] operandVars)
-                                                     []
-                                              , valD (varP regs_)
-                                                     (normalB $ foldr (\ (v, n) e -> 
-                                                                         if v then 
-                                                                           [| $(varE n) ++ $e |]
-                                                                         else 
-                                                                           [| $(varE n) : $e |]) [| [] |] regionVars)
-                                                     []
-                                              , valD (varP succs_)
-                                                     (normalB $ foldr (\ (v, n) e ->
-                                                                         if v then 
-                                                                           [| $(varE n) ++ $e |]
-                                                                         else 
-                                                                           [| $(varE n) : $e |])
-                                                                       [| [] |]
-                                                                       successorVars)
-                                                     []
-                                              , valD (varP rtyps_)
-                                                     (normalB $ foldr (\ (v, n) e -> 
-                                                                         if v then
-                                                                           [| $(varE n) ++ $e |]
-                                                                         else
-                                                                           [| $(varE n) :  $e |])
-                                                                      [| [] |]
-                                                                      rtypeVars)
-                                                     []
-                                              , valD (varP rget_)
-                                                     (normalB rgetf)
-                                                     []
-                                              , valD (varP segms_) -- If this is not used then the compiler will probably optimize it away
-                                                     (normalB (if attrSizedOperandSegments traits then
-                                                                 [| mlirDenseI32ArrayGet $(varE ctx_) $
-                                                                                         primArrayFromListN $(litE $ integerL $ fromIntegral $ length operandVars)
-                                                                                                            $(foldr (\ (oinfo, name) e ->
-                                                                                                                       case oinfo of
-                                                                                                                         OpVariadic optional Nothing
-                                                                                                                           | optional  -> [| maybe 0 length $(varE name) : $e |]
-                                                                                                                           | otherwise -> [| length $(varE name) : $e |]
-                                                                                                                         OpVariadic optional (Just _)
-                                                                                                                           | optional  -> [| maybe 0 (length . concat) $(varE name) : $e |]
-                                                                                                                           | otherwise -> [| length (concat $(varE name)) : $e |]
-                                                                                                                         OpNonVariadic optional 
-                                                                                                                           | optional  -> [| maybe 0 (const 1) $(varE name) : $e |]
-                                                                                                                           | otherwise -> [| 1 : $e |]
-                                                                                                                     )
-                                                                                                                     [| [] :: [Int32] |]
-                                                                                                                     operandVars
-                                                                                                             )
-                                                                 |]
-                                                               else
-                                                                 [| error "Code generation implementation error. This should not have been evaluated." |]
-                                                              )
-                                                     )
-                                                     []
-                                              , valD (varP vsattrs_)
-                                                     (normalB $ foldr (\ (oinfo, name) e -> 
-                                                                         case oinfo of
-                                                                           OpVariadic optional (Just attrName)
-                                                                             -> [| mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack attrName))
-                                                                                                         (mlirDenseI32ArrayGet $(varE ctx_) $ 
-                                                                                                             primArrayFromList 
-                                                                                                             $(if optional then
-                                                                                                                 [| maybe [] (fmap genericLength) $(varE name) |]
-                                                                                                               else
-                                                                                                                 [| fmap genericLength $(varE name) |] 
-                                                                                                              )
-                                                                                                         )
-                                                                                   : $e
-                                                                                |]
-                                                                           _otherwise -> e
-                                                                      )
-                                                                      [| [] |]
-                                                                      operandVars)
-                                                     []
-                                              , do 
-                                                let variadicOperandLengthExps = catMaybes [ case opinfo of
-                                                                                              OpVariadic optional Nothing
-                                                                                                | optional  -> Just [| maybe 0 length $(varE name) |]
-                                                                                                | otherwise -> Just [| length $(varE name) |]
-                                                                                              OpVariadic optional (Just _)
-                                                                                                | optional  -> Just [| maybe 0 (sum . fmap length) $(varE name) |]
-                                                                                                | otherwise -> Just [| sum $ fmap length $(varE name) |]
-                                                                                              OpNonVariadic optional
-                                                                                                | optional  -> Just [| maybe 0 (const 1) $(varE name) |]
-                                                                                                | otherwise -> Nothing
-                                                                                          | (opinfo, name) <- operandVars ]
-                                                oln <- mapM (sequence . (, newName "voln")) variadicOperandLengthExps
-                                                valD (varP sleng_)
-                                                     (normalB $ if sameVariadicOperandSize traits then
-                                                                  do
-                                                                  metric <- case oln of []        -> fail "Op has SameVariadicOperandSize but does not have a variadic operand."
-                                                                                        ((_,a):_) -> return a
-                                                                  foldr (\ (_, name) e -> [| ($(varE name) == $(varE metric)) && $e |])
-                                                                        [| True |]
-                                                                        oln
-                                                                else
-                                                                  [| error "Code generation implementation error. This should not have been evaluated." |])
-                                                     [valD (varP name) (normalB expr) [] | (expr, name) <- oln]
-                                              ]
-                                     ]
+    , funD_doc
+        (mkName normalizedOpName) 
+        [ clause (varP ctx_ : varP block_ : varP loc_ :
+                 [ varP n | (_, n)    <- operandVars   ]
+              ++ [ varP n | (_, _, n) <- attributeVars ]
+              ++ [ varP n | (_, n)    <- regionVars    ]
+              ++ [ varP n | (_, n)    <- successorVars ]
+              ++ [ varP n | (_, n)    <- rtypeVars     ])
+             (normalB
+                  [| $(varE rget_) <$> mlirBlockAddOperation $(varE block_)
+                                                             $(litE $ stringL $ unpack $ dn <> "." <> opOpName operation)
+                                                             $(varE loc_)
+                                                             $(varE rtyps_)
+                                                             $(if sameVariadicOperandSize traits then [| (assert $(varE sleng_) $(varE opers_)) |] else [| $(varE opers_) |])
+                                                             $(varE regs_)
+                                                             $(varE succs_)
+                                                             $(varE attrs_)
+                                                             False
+                  |]
+             )
+             [ valD (varP attrs_)
+                    (normalB $ foldr (\ (optional, n, u) e ->
+                                        if optional then
+                                          [| maybe id ((:) . mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack n))) $(varE u) $e |]
+                                        else 
+                                          [| mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack n)) $(varE u) : $e |]
+                                     )
+                                     (if attrSizedOperandSegments traits then [| $(varE segms_) : $(varE vsattrs_) |] else [| $(varE vsattrs_) |]) -- TODO: Move this somewhere else
+                                     attributeVars)
+                    []
+             , valD (varP opers_)
+                    (normalB $ foldr (\ (v, n) e -> 
+                                        case v of
+                                          OpNonVariadic optional
+                                            | optional  -> [| maybe id (:) $(varE n) $e |]
+                                            | otherwise -> [| $(varE n) : $e |]
+                                          OpVariadic    optional Nothing  ->
+                                            [| $(if optional then [| fromMaybe [] |] else [| id |]) $(varE n) ++ $e |]
+                                          OpVariadic    optional (Just _) ->
+                                            [| $(if optional then [| maybe [] concat |] else [| concat |]) $(varE n) ++ $e |]
+                                          ) [| [] |] operandVars)
+                    []
+             , valD (varP regs_)
+                    (normalB $ foldr (\ (v, n) e -> 
+                                        if v then 
+                                          [| $(varE n) ++ $e |]
+                                        else 
+                                          [| $(varE n) : $e |]) [| [] |] regionVars)
+                    []
+             , valD (varP succs_)
+                    (normalB $ foldr (\ (v, n) e ->
+                                        if v then 
+                                          [| $(varE n) ++ $e |]
+                                        else 
+                                          [| $(varE n) : $e |])
+                                      [| [] |]
+                                      successorVars)
+                    []
+             , valD (varP rtyps_)
+                    (normalB $ foldr (\ (v, n) e -> 
+                                        if v then
+                                          [| $(varE n) ++ $e |]
+                                        else
+                                          [| $(varE n) :  $e |])
+                                     [| [] |]
+                                     rtypeVars)
+                    []
+             , valD (varP rget_)
+                    (normalB rgetf)
+                    []
+             , valD (varP segms_) -- If this is not used then the compiler will probably optimize it away
+                    (normalB (if attrSizedOperandSegments traits then
+                                [| mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) "operandSegmentSizes") $
+                                   mlirDenseI32ArrayGet $(varE ctx_) $
+                                                        primArrayFromListN $(litE $ integerL $ fromIntegral $ length operandVars)
+                                                                           $(foldr (\ (oinfo, name) e ->
+                                                                                      case oinfo of
+                                                                                        OpVariadic optional Nothing
+                                                                                          | optional  -> [| maybe 0 genericLength $(varE name) : $e |]
+                                                                                          | otherwise -> [| genericLength $(varE name) : $e |]
+                                                                                        OpVariadic optional (Just _)
+                                                                                          | optional  -> [| maybe 0 (genericLength . concat) $(varE name) : $e |]
+                                                                                          | otherwise -> [| genericLength (concat $(varE name)) : $e |]
+                                                                                        OpNonVariadic optional 
+                                                                                          | optional  -> [| maybe 0 (const 1) $(varE name) : $e |]
+                                                                                          | otherwise -> [| 1 : $e |]
+                                                                                    )
+                                                                                    [| [] :: [Int32] |]
+                                                                                    operandVars
+                                                                            )
+                                |]
+                              else
+                                [| error "Code generation implementation error. This should not have been evaluated." |]
+                             )
+                    )
+                    []
+             , valD (varP vsattrs_)
+                    (normalB $ foldr (\ (oinfo, name) e -> 
+                                        case oinfo of
+                                          OpVariadic optional (Just attrName)
+                                            -> [| mlirNamedAttributeGet (mlirIdentifierGet $(varE ctx_) $(litE $ stringL $ unpack attrName))
+                                                                        (mlirDenseI32ArrayGet $(varE ctx_) $ 
+                                                                            primArrayFromList 
+                                                                            $(if optional then
+                                                                                [| maybe [] (fmap genericLength) $(varE name) |]
+                                                                              else
+                                                                                [| fmap genericLength $(varE name) |] 
+                                                                             )
+                                                                        )
+                                                  : $e
+                                               |]
+                                          _otherwise -> e
+                                     )
+                                     [| [] |]
+                                     operandVars)
+                    []
+             , do 
+               let variadicOperandLengthExps = catMaybes [ case opinfo of
+                                                             OpVariadic optional Nothing
+                                                               | optional  -> Just [| maybe 0 length $(varE name) |]
+                                                               | otherwise -> Just [| length $(varE name) |]
+                                                             OpVariadic optional (Just _)
+                                                               | optional  -> Just [| maybe 0 (sum . fmap length) $(varE name) |]
+                                                               | otherwise -> Just [| sum $ fmap length $(varE name) |]
+                                                             OpNonVariadic optional
+                                                               | optional  -> Just [| maybe 0 (const 1) $(varE name) |]
+                                                               | otherwise -> Nothing
+                                                         | (opinfo, name) <- operandVars ]
+               oln <- mapM (sequence . (, newName "voln")) variadicOperandLengthExps
+               valD (varP sleng_)
+                    (normalB $ if sameVariadicOperandSize traits then
+                                 do
+                                 metric <- case oln of []        -> fail "Op has SameVariadicOperandSize but does not have a variadic operand."
+                                                       ((_,a):_) -> return a
+                                 foldr (\ (_, name) e -> [| ($(varE name) == $(varE metric)) && $e |])
+                                       [| True |]
+                                       oln
+                               else
+                                 [| error "Code generation implementation error. This should not have been evaluated." |])
+                    [valD (varP name) (normalB expr) [] | (expr, name) <- oln]
+             ]
+        ]
+        (Just $ unwords $ [unpack $ opOpName operation, "context", "block", "location"] ++ [unpack name | name <- operandNames]
+                                                                                        ++ [unpack name | (_, name) <- attributes]
+                                                                                        ++ ["region" | _ <- regions]
+                                                                                        ++ ["successor" | _ <- successors]
+                                                                                        ++ ["result-type" | _ <- results]) $
+        [Just "Owning context", Just "Owning block", Just "Location"] ++ [Just $ unpack name | name <- operandNames]
+                                                                      ++ [Just $ unpack name | (_, name) <- attributes]
+                                                                      ++ [Just "" | _ <- regions]
+                                                                      ++ [Just "" | _ <- successors]
+                                                                      ++ [Just "" | _ <- results]
     ]
-  where getDagValueName (DagValueName (ValDef v) n) = Just (v, n)
-        getDagValueName _ = Nothing
+  where 
         getDagValue (DagValueName (ValDef v) _) = Just v
         getDagValue (DagValue     (ValDef v)  ) = Just v
         getDagValue _ = Nothing
+        getDagValueMaybeName (DagValueName (ValDef v) n) = Just (v, Just n)
+        getDagValueMaybeName (DagValue     (ValDef v)  ) = Just (v, Nothing)
+        getDagValueMaybeName _ = Nothing
         traits = getOperationTraits tblgen operation
-        normalizedOpName = unpack $ map (\case '.' -> '_'; ch -> ch) $ opOpName operation
+        normalizedOpName = ('_':) $ unpack $ map (\case '.' -> '_'; ch -> ch) $ opOpName operation -- TODO: Find a better naming scheme
+
 
 generateDialect' :: Tablegen -> DecsQ
 generateDialect' tblgen = fmap mconcat $ mapM (generateOperation' tblgen) $ getAllInstanceOf @Op tblgen

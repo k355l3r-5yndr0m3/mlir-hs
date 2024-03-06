@@ -44,7 +44,10 @@ withMlirModule :: MlirLocation -> (MlirModule -> IO a) -> IO a
 withMlirModule location = bracket (mlirModuleCreateEmpty location) mlirModuleDestroy
 
 mlirModuleEmitBytecode :: MlirModule -> IO Bytecode
-mlirModuleEmitBytecode = operationEmitBytecode . mlirModuleGetOperation
+mlirModuleEmitBytecode = mlirOperationEmitBytecode . mlirModuleGetOperation
+
+mlirModuleDump :: MlirModule -> IO ()
+mlirModuleDump = mlirOperationDump . mlirModuleGetOperation
 
 -- Operation bracket (always insert into the block)
 mlirBlockAddOperation :: MlirBlock -> String -> MlirLocation -> [MlirType] -> [MlirValue] -> [MlirRegion -> IO ()] -> [MlirBlock] -> [MlirNamedAttribute] -> Bool -> IO (MlirOperation, [MlirValue])
@@ -65,8 +68,8 @@ blockAddOperation_ :: MlirBlock -> String -> MlirLocation -> [MlirType] -> [Mlir
 blockAddOperation_ block opname location results operands regions successors attributes inference =
   snd <$> mlirBlockAddOperation block opname location results operands regions successors attributes inference
 
-operationEmitBytecode :: MlirOperation -> IO Bytecode
-operationEmitBytecode operation = do
+mlirOperationEmitBytecode :: MlirOperation -> IO Bytecode
+mlirOperationEmitBytecode operation = do
   sizeRef <- newIORef 0
   let sizeCallback _ len =
         modifyIORef sizeRef (+len)

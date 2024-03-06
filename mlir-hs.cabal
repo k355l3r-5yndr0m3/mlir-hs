@@ -54,14 +54,15 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
-common debug
+common devel
     ghc-options: -ddump-splices
                  -ddump-to-file
+                 -haddock
 
 library
     -- Import common warning flags.
     import:           warnings,
-                      debug
+                      devel
 
     c-sources:        cbit/callback.c
                       cbit/wrapper.c
@@ -71,11 +72,27 @@ library
                       MLIR.TH
                       MLIR.IR
                       MLIR.BuiltinTypes
+                      MLIR.BuiltinAttributes
+                      MLIR.Dialect.Arith
+                      MLIR.Dialect.Async
+                      MLIR.Dialect.ControlFlow
                       MLIR.Dialect.Func
+                      MLIR.Dialect.GPU
+                      MLIR.Dialect.Linalg
+                      MLIR.Dialect.LLVM
+                      MLIR.Dialect.Math
+                      MLIR.Dialect.MemRef
+                      MLIR.Dialect.MLProgram
+                      MLIR.Dialect.PDL
+                      MLIR.Dialect.Quant
+                      MLIR.Dialect.SCF
+                      MLIR.Dialect.Shape
+                      MLIR.Dialect.SparseTensor
+                      MLIR.Dialect.Tensor
+                      MLIR.Dialect.Transform
+                      MLIR.Dialect.Vector
 
-    -- TODO: Remove the Finalizers module
-    other-modules:    MLIR.FFI.Finalizers
-                      MLIR.FFI.Support
+    other-modules:    MLIR.FFI.Support
                       MLIR.FFI.AffineExpr
                       MLIR.FFI.AffineMap
                       MLIR.FFI.IR
@@ -83,8 +100,6 @@ library
                       MLIR.FFI.BuiltinAttributes
                       MLIR.FFI.Marshal
                       Tablegen
-
-    
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -108,7 +123,7 @@ library
 
     include-dirs:     cbit
 
-
+    -- TODO: Rewrite the extra-libraries
     extra-libraries:  stdc++
                       tinfo
                       LLVMDemangle
@@ -116,36 +131,290 @@ library
                       MLIRSupport
                       MLIRIR
                       MLIRCAPIIR
+                      MLIRBytecodeWriter
+                      MLIRBytecodeReader
+                      MLIRBytecodeOpInterface
+                      MLIRAsmParser
+                      MLIRParser
+
+    extra-libraries:  MLIRCAPIFunc
+                      MLIRFuncDialect 
+
+    extra-libraries:  MLIRCAPILLVM
+                      MLIRLLVMDialect
+                      LLVMBinaryFormat
+                      MLIRMemorySlotInterfaces
+                      MLIRDataLayoutInterfaces
+                      MLIRSideEffectInterfaces
+                      MLIRControlFlowInterfaces
+                      MLIRInferTypeOpInterface
+                      LLVMCore
+
+    extra-libraries:  MLIRCAPIArith
+                      MLIRArithDialect
+                      MLIRInferIntRangeCommon
+                      MLIRCastInterfaces
+                      MLIRInferIntRangeInterface
+
+    extra-libraries:  MLIRCAPIAsync
+                      MLIRAsyncDialect
+
+    extra-libraries:  MLIRCAPIControlFlow
+                      MLIRControlFlowDialect
+
+    extra-libraries:  MLIRCAPIGPU
+                      MLIRGPUDialect
+                      MLIRDLTIDialect
+                      MLIRMemRefDialect
+                      MLIRDialectUtils
+
+    extra-libraries:  MLIRCAPILinalg
+                      MLIRLinalgDialect
+                      MLIRViewLikeInterface
+                      MLIRArithUtils
+
+                      MLIRBufferizationTransformOps
+                      MLIRVectorTransformOps
+
+                      MLIRTensorDialect
+                      MLIRAffineDialect
+                      MLIRDestinationStyleOpInterface
+                      MLIRShapedOpInterfaces
+                      MLIRMathDialect
+                      MLIRSparseTensorDialect
+                      MLIRComplexDialect
+
+    extra-libraries:  MLIRCAPIMath
+                      MLIRMathDialect
+
+    extra-libraries:  MLIRCAPIMemRef
+                      MLIRMemRefDialect
+
+    extra-libraries:  MLIRCAPIMLProgram
+                      MLIRMLProgramDialect
+
+    extra-libraries:  MLIRCAPIPDL
+                      MLIRPDLDialect
+
+    extra-libraries:  MLIRCAPIQuant
+                      MLIRQuantDialect
+
+    extra-libraries:  MLIRCAPISCF
+                      MLIRSCFDialect
+                      MLIRBufferizationDialect
+                      MLIRParallelCombiningOpInterface
+
+    extra-libraries:  MLIRCAPIShape
+                      MLIRShapeDialect
+                      MLIRDialect
+    
+    extra-libraries:  MLIRCAPISparseTensor
+                      MLIRSparseTensorDialect
+
+    extra-libraries:  MLIRCAPITensor
+                      MLIRTensorDialect
+
+    extra-libraries:  MLIRCAPITransformDialect
+                      MLIRTransformDialect
+                      MLIRPass
+                      MLIRTransformUtils
+                      MLIRAnalysis
+                      MLIRRewrite
+                      MLIRPDLInterpDialect
+                      MLIRTransforms
+                      MLIRTransformDialectUtils
+                      MLIRCallInterfaces
+                      MLIRLoopLikeInterface
+                      MLIRPDLToPDLInterp
+
+    extra-libraries:  MLIRCAPIVector
+                      MLIRVectorDialect
+                      MLIRMaskingOpInterface
+                      MLIRMaskableOpInterface
+                      MLIRVectorInterfaces
 
     -- TODO: Remove this
     extra-lib-dirs:   /home/cha0s/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib
     -- Base language which the package is written in.
     default-language: GHC2021
 
-test-suite mlir-hs-test
-    -- Import common warning flags.
+test-suite mlir-hs-llvm-test
     import:           warnings,
-                      debug
-
-    -- Base language which the package is written in.
+                      devel
     default-language: GHC2021
-
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- The interface type and version of the test suite.
     type:             exitcode-stdio-1.0
-
-    -- Directories containing source files.
     hs-source-dirs:   test
+    main-is:          LLVMTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
 
-    -- The entrypoint to the test suite.
-    main-is:          Main.hs
+test-suite mlir-hs-func-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          FuncTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
 
-    -- Test dependencies.
+test-suite mlir-hs-arith-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          ArithTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-async-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          AsyncTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-cf-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          ControlFlowTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-gpu-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          GPUTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-linalg-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          LinalgTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-math-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MathTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-memref-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MemRefTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-ml-program-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          MLProgramTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-pdl-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          PDLTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-quant-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          QuantTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-scf-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          SCFTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-shape-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          ShapeTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-sparse-tensor-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          SparseTensorTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-tensor-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          TensorTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-transform-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          TransformTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
+
+test-suite mlir-hs-vector-test
+    import:           warnings, devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          VectorTest.hs
     build-depends:
         base ^>=4.17.2.1,
         mlir-hs

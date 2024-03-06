@@ -87,12 +87,14 @@ instance FromJSON Dag where
 data Record = Record
   { superclasses :: Set Text
   , anonymous    :: Bool
+  , name         :: Text
   , arguments    :: Map Text TblVal
   }
 instance FromJSON Record where
   parseJSON = withObject "Record" $ \ record -> 
     Record <$> record .: "!superclasses"
            <*> record .: "!anonymous"
+           <*> record .: "!name"
            <*> mapM parseJSON (filterWithKey (\ k _ -> not $ "!" `T.isPrefixOf` k) $
                                mapKeys toText $
                                toMap record)
@@ -114,10 +116,10 @@ class RecordClass c where
   reifyRecord :: Record -> Maybe c
 
 isInstanceof :: forall c. RecordClass c => Record -> Bool
-isInstanceof = S.member (className @c) . superclasses
+isInstanceof r = name r == className @c || S.member (className @c) (superclasses r)
 
 defInstanceof :: forall c. RecordClass c => Tablegen -> Def -> Bool
-defInstanceof t (Def def) = S.member def $ fromMaybe S.empty $ M.lookup (className @c) $ instanceof t
+defInstanceof t (Def def) = def == className @c || S.member def (fromMaybe S.empty $ M.lookup (className @c) $ instanceof t)
 
 data Op = Op
   { opOpDialect  :: Def
@@ -231,4 +233,15 @@ instance RecordClass OptionalAttr where
   className = "OptionalAttr"
   reifyRecord r
     | isInstanceof @OptionalAttr r = Just undefined
+    | otherwise = Nothing
+
+newtype Dialect = Dialect Text
+instance RecordClass Dialect where
+  className = "Dialect"
+  reifyRecord r
+    | isInstanceof @Dialect r =
+      do
+      let args = arguments r
+      ValString dname <- M.lookup "name" args
+      return (Dialect dname)
     | otherwise = Nothing

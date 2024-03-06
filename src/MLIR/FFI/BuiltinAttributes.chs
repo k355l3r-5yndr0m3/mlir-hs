@@ -1,4 +1,160 @@
-module MLIR.FFI.BuiltinAttributes where
+module MLIR.FFI.BuiltinAttributes 
+( mlirAttributeIsAAffineMap 
+, mlirAffineMapAttrGet
+, mlirAffineMapAttrGetValue 
+, mlirAffineMapAttrGetTypeID
+
+, mlirAttributeGetNull
+, mlirAttributeIsALocation
+
+, mlirAttributeIsAArray          
+, mlirArrayAttrGet               
+, mlirArrayAttrGetNumElements    
+, mlirArrayAttrGetElement        
+, mlirArrayAttrGetTypeID         
+
+, mlirAttributeIsADictionary      
+, mlirDictionaryAttrGet           
+, mlirDictionaryAttrGetNumElements
+, mlirDictionaryAttrGetElement
+, mlirDictionaryAttrGetElementByName
+, mlirDictionaryAttrGetTypeID
+
+, mlirAttributeIsAFloat         
+, mlirFloatAttrDoubleGet        
+, mlirFloatAttrDoubleGetChecked 
+, mlirFloatAttrGetValueDouble   
+, mlirFloatAttrGetTypeID        
+
+, mlirAttributeIsAInteger     
+, mlirIntegerAttrGet          
+, mlirIntegerAttrGetValueInt  
+, mlirIntegerAttrGetValueSInt 
+, mlirIntegerAttrGetValueUInt 
+, mlirIntegerAttrGetTypeID    
+
+, mlirAttributeIsABool
+, mlirBoolAttrGet     
+, mlirBoolAttrGetValue
+
+, mlirAttributeIsAIntegerSet   
+, mlirIntegerSetAttrGetTypeID  
+
+, mlirAttributeIsAOpaque
+
+
+
+
+
+
+
+
+
+
+
+, mlirOpaqueAttrGet
+, mlirOpaqueAttrGetDialectNamespace
+, mlirOpaqueAttrGetData
+, mlirOpaqueAttrGetTypeID
+, mlirAttributeIsAString
+, mlirStringAttrGet
+, mlirStringAttrTypedGet
+, mlirStringAttrGetValue
+, mlirStringAttrGetTypeID
+, mlirAttributeIsAType
+, mlirTypeAttrGet
+, mlirTypeAttrGetValue
+, mlirTypeAttrGetTypeID
+, mlirAttributeIsAUnit
+, mlirUnitAttrGet
+, mlirUnitAttrGetTypeID
+, mlirAttributeIsAElements
+, mlirElementsAttrGetValue
+, mlirElementsAttrIsValidIndex
+, mlirElementsAttrGetNumElements
+, mlirDenseArrayAttrGetTypeID
+, mlirAttributeIsADenseBoolArray
+, mlirAttributeIsADenseI8Array
+, mlirAttributeIsADenseI16Array
+, mlirAttributeIsADenseI32Array
+, mlirAttributeIsADenseI64Array
+, mlirAttributeIsADenseF32Array
+, mlirAttributeIsADenseF64Array
+, mlirDenseBoolArrayGet
+, mlirDenseI8ArrayGet
+, mlirDenseI16ArrayGet
+, mlirDenseI32ArrayGet
+, mlirDenseI64ArrayGet
+, mlirDenseF32ArrayGet
+, mlirDenseF64ArrayGet
+, mlirDenseArrayGetNumElements
+, mlirDenseBoolArrayGetElement
+, mlirDenseI8ArrayGetElement
+, mlirDenseI16ArrayGetElement
+, mlirDenseI32ArrayGetElement
+, mlirDenseI64ArrayGetElement
+, mlirDenseF32ArrayGetElement
+, mlirDenseF64ArrayGetElement
+, mlirAttributeIsADenseElements
+, mlirAttributeIsADenseIntElements
+, mlirAttributeIsADenseFPElements
+, mlirDenseIntOrFPElementsAttrGetTypeID
+, mlirDenseElementsAttrGet
+, mlirDenseElementsAttrRawBufferGet
+, mlirDenseElementsAttrSplatGet
+, mlirDenseElementsAttrBoolSplatGet
+, mlirDenseElementsAttrUInt8SplatGet
+, mlirDenseElementsAttrInt8SplatGet
+, mlirDenseElementsAttrUInt32SplatGet
+, mlirDenseElementsAttrInt32SplatGet
+, mlirDenseElementsAttrUInt64SplatGet
+, mlirDenseElementsAttrInt64SplatGet
+, mlirStridedLayoutAttrGetTypeID
+, mlirDenseElementsAttrFloatSplatGet
+, mlirDenseElementsAttrDoubleSplatGet
+, mlirDenseElementsAttrUInt8Get
+, mlirDenseElementsAttrInt8Get
+, mlirDenseElementsAttrUInt16Get
+, mlirDenseElementsAttrInt16Get
+, mlirDenseElementsAttrUInt32Get
+, mlirDenseElementsAttrInt32Get
+, mlirDenseElementsAttrUInt64Get
+, mlirDenseElementsAttrInt64Get
+, mlirDenseElementsAttrFloatGet
+, mlirDenseElementsAttrDoubleGet
+, mlirDenseElementsAttrReshapeGet
+, mlirDenseElementsAttrIsSplat
+, mlirDenseElementsAttrGetSplatValue
+, mlirDenseElementsAttrGetBoolSplatValue
+, mlirDenseElementsAttrGetInt8SplatValue
+, mlirDenseElementsAttrGetUInt8SplatValue
+, mlirDenseElementsAttrGetInt32SplatValue
+, mlirDenseElementsAttrGetUInt32SplatValue
+, mlirDenseElementsAttrGetInt64SplatValue
+, mlirDenseElementsAttrGetUInt64SplatValue
+, mlirDenseElementsAttrGetFloatSplatValue
+, mlirDenseElementsAttrGetDoubleSplatValue
+, mlirDenseElementsAttrGetBoolValue
+, mlirDenseElementsAttrGetInt8Value
+, mlirDenseElementsAttrGetUInt8Value
+, mlirDenseElementsAttrGetInt16Value
+, mlirDenseElementsAttrGetUInt16Value
+, mlirDenseElementsAttrGetInt32Value
+, mlirDenseElementsAttrGetUInt32Value
+, mlirDenseElementsAttrGetInt64Value
+, mlirDenseElementsAttrGetUInt64Value
+, mlirDenseElementsAttrGetFloatValue
+, mlirDenseElementsAttrGetDoubleValue
+, mlirAttributeIsAStridedLayout
+, mlirStridedLayoutAttrGet
+, mlirStridedLayoutAttrGetOffset
+, mlirStridedLayoutAttrGetNumStrides
+, mlirStridedLayoutAttrGetStride
+
+, mlirAttributeIsAFlatSymbolRef
+, mlirFlatSymbolRefAttrGet
+, mlirFlatSymbolRefAttrGetValue
+) where
 
 import MLIR.FFI.Marshal
 
@@ -12,51 +168,51 @@ import Foreign
 
 #include <mlir-c/BuiltinAttributes.h>
 #include <wrapper.h>
-{#fun pure unsafe mlirAttributeIsAAffineMap { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirAffineMapAttrGet { coerce `MlirAffineMap' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirAffineMapAttrGetValue { coerce `MlirAttribute' } -> `MlirAffineMap' coerce #}
-{#fun pure unsafe mlirAffineMapAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirAttributeIsAAffineMap       { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirAffineMapAttrGet            { coerce `MlirAffineMap' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirAffineMapAttrGetValue       { coerce `MlirAttribute' } -> `MlirAffineMap' coerce #}
+{#fun pure unsafe mlirAffineMapAttrGetTypeID      { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeGetNull { } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirAttributeIsALocation { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirAttributeGetNull            { } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirAttributeIsALocation        { coerce `MlirAttribute' } -> `Bool' #}
 
-{#fun pure unsafe mlirAttributeIsAArray { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirArrayAttrGet { coerce `MlirContext', marshalStorableArrayLen* `[MlirAttribute]'& } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirArrayAttrGetNumElements { coerce `MlirAttribute' } -> `Int' #}
-{#fun pure unsafe mlirArrayAttrGetElement { coerce `MlirAttribute', `Int' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirArrayAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirAttributeIsAArray           { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirArrayAttrGet                { coerce `MlirContext', marshalStorableArrayLen* `[MlirAttribute]'& } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirArrayAttrGetNumElements     { coerce `MlirAttribute' } -> `Int' #}
+{#fun pure unsafe mlirArrayAttrGetElement         { coerce `MlirAttribute', `Int' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirArrayAttrGetTypeID          { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeIsADictionary { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirDictionaryAttrGet { coerce `MlirContext', marshalStorableArrayLen* `[MlirNamedAttribute]'& } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirDictionaryAttrGetNumElements { coerce `MlirAttribute' } -> `Int' #}
+{#fun pure unsafe mlirAttributeIsADictionary              { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirDictionaryAttrGet                   { coerce `MlirContext', marshalStorableArrayLen* `[MlirNamedAttribute]'& } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirDictionaryAttrGetNumElements        { coerce `MlirAttribute' } -> `Int' #}
 {#fun pure unsafe mlirDictionaryAttrGetElement__hswrap as mlirDictionaryAttrGetElement { coerce `MlirAttribute', `Int', alloca- `MlirNamedAttribute' peek*} -> `()' #}
 {#fun pure unsafe mlirDictionaryAttrGetElementByName__hswrap as mlirDictionaryAttrGetElementByName { coerce `MlirAttribute', `String'& } -> `MlirAttribute' coerce #} 
-{#fun pure unsafe mlirDictionaryAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirDictionaryAttrGetTypeID             { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeIsAFloat { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirFloatAttrDoubleGet { coerce `MlirContext', coerce `MlirType', `Double' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirFloatAttrDoubleGetChecked { coerce `MlirLocation', coerce `MlirType', `Double' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirFloatAttrGetValueDouble { coerce `MlirAttribute' } -> `Double' #}
-{#fun pure unsafe mlirFloatAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirAttributeIsAFloat               { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirFloatAttrDoubleGet              { coerce `MlirContext', coerce `MlirType', `Double' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirFloatAttrDoubleGetChecked       { coerce `MlirLocation', coerce `MlirType', `Double' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirFloatAttrGetValueDouble         { coerce `MlirAttribute' } -> `Double' #}
+{#fun pure unsafe mlirFloatAttrGetTypeID              { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeIsAInteger { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirIntegerAttrGet { coerce `MlirType', `Int64' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirIntegerAttrGetValueInt { coerce `MlirAttribute' } -> `Int64' #}
-{#fun pure unsafe mlirIntegerAttrGetValueSInt { coerce `MlirAttribute' } -> `Int64' #}
-{#fun pure unsafe mlirIntegerAttrGetValueUInt { coerce `MlirAttribute' } -> `Word64' #}
-{#fun pure unsafe mlirIntegerAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirAttributeIsAInteger         { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirIntegerAttrGet              { coerce `MlirType', `Int64' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirIntegerAttrGetValueInt      { coerce `MlirAttribute' } -> `Int64' #}
+{#fun pure unsafe mlirIntegerAttrGetValueSInt     { coerce `MlirAttribute' } -> `Int64' #}
+{#fun pure unsafe mlirIntegerAttrGetValueUInt     { coerce `MlirAttribute' } -> `Word64' #}
+{#fun pure unsafe mlirIntegerAttrGetTypeID        { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeIsABool { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirBoolAttrGet { coerce `MlirContext', `Bool' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirBoolAttrGetValue { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirAttributeIsABool            { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirBoolAttrGet                 { coerce `MlirContext', `Bool' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirBoolAttrGetValue            { coerce `MlirAttribute' } -> `Bool' #}
 
-{#fun pure unsafe mlirAttributeIsAIntegerSet { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirIntegerSetAttrGetTypeID { } -> `MlirTypeID' coerce #}
+{#fun pure unsafe mlirAttributeIsAIntegerSet      { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirIntegerSetAttrGetTypeID     { } -> `MlirTypeID' coerce #}
 
-{#fun pure unsafe mlirAttributeIsAOpaque { coerce `MlirAttribute' } -> `Bool' #}
-{#fun pure unsafe mlirOpaqueAttrGet__hswrap { coerce `MlirContext', `String'&, `Int', castPtr `Ptr Word8', coerce `MlirType' } -> `MlirAttribute' coerce #}
-{#fun pure unsafe mlirOpaqueAttrGetDialectNamespace__hswrap { coerce `MlirAttribute', alloca- `String' peekStringRefPtr* } -> `()' #}
-{#fun pure unsafe mlirOpaqueAttrGetData__hswrap { coerce `MlirAttribute', alloca- `MlirStringRef' peek* } -> `()' #}
+{#fun pure unsafe mlirAttributeIsAOpaque    { coerce `MlirAttribute' } -> `Bool' #}
+{#fun pure unsafe mlirOpaqueAttrGet__hswrap as mlirOpaqueAttrGet { coerce `MlirContext', `String'&, `Int', castPtr `Ptr Word8', coerce `MlirType' } -> `MlirAttribute' coerce #}
+{#fun pure unsafe mlirOpaqueAttrGetDialectNamespace__hswrap as mlirOpaqueAttrGetDialectNamespace { coerce `MlirAttribute', alloca- `String' peekStringRefPtr* } -> `()' #}
+{#fun pure unsafe mlirOpaqueAttrGetData__hswrap as mlirOpaqueAttrGetData { coerce `MlirAttribute', alloca- `MlirStringRef' peek* } -> `()' #}
 {#fun pure unsafe mlirOpaqueAttrGetTypeID { } -> `MlirTypeID' coerce #}
 
 {#fun pure unsafe mlirAttributeIsAString { coerce `MlirAttribute' } -> `Bool' #}
@@ -182,4 +338,20 @@ import Foreign
 {#fun pure unsafe mlirStridedLayoutAttrGetNumStrides { coerce `MlirAttribute' } -> `Int' #}
 {#fun pure unsafe mlirStridedLayoutAttrGetStride { coerce `MlirAttribute', `Int' } -> `Int64' coerce #}
 {#fun pure unsafe mlirStridedLayoutAttrGetTypeID { } -> `MlirTypeID' coerce #}
+
+
+{#fun pure unsafe mlirAttributeIsAFlatSymbolRef { coerce `MlirAttribute' } -> `Bool' #}
+#c
+MlirAttribute mlirFlatSymbolRefAttrGet__hswrap(MlirContext context, const char *symbol_data, size_t symbol_length) {
+    return mlirFlatSymbolRefAttrGet(context, (MlirStringRef){symbol_data, symbol_length});
+}
+#endc
+{#fun pure unsafe mlirFlatSymbolRefAttrGet__hswrap as mlirFlatSymbolRefAttrGet { coerce `MlirContext', `String'& } -> `MlirAttribute' coerce #}
+
+#c
+void mlirFlatSymbolRefAttrGetValue__hswrap(MlirAttribute attr, MlirStringRef *output) {
+    *output = mlirFlatSymbolRefAttrGetValue(attr);
+}
+#endc
+{#fun pure unsafe mlirFlatSymbolRefAttrGetValue__hswrap as mlirFlatSymbolRefAttrGetValue { coerce `MlirContext', alloca- `String' peekStringRefPtr* } -> `()' #}
 
