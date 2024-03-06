@@ -6,9 +6,12 @@ module MLIR.IR
 import MLIR.FFI.IR
 
 import Control.Exception
+import Control.Monad
 
 import Data.Primitive
 import Data.IORef
+
+import System.IO
 
 
 -- Functionalities:
@@ -21,9 +24,7 @@ import Data.IORef
 -- Some object is owned by Mlir* (most of the time it is MlirContext, and it must not be freed by the runtime)
 -- Object can switch between the two
 
--- So using foreignptr is a pain
--- bracket pattern limit the scope of objects but this seem like the only via way to keep my sanity
--- Context bracket
+-- A pinned bytearray
 type Bytecode = ByteArray
 
 withMlirContext :: (MlirContext -> IO a) -> IO a
@@ -75,7 +76,7 @@ mlirOperationEmitBytecode operation = do
         modifyIORef sizeRef (+len)
   mlirOperationWriteBytecode operation sizeCallback
   size <- readIORef sizeRef
-  bytecode <- newByteArray size
+  bytecode <- newPinnedByteArray size
   
   writeIORef sizeRef 0
   let writeCallback str len = do
@@ -91,3 +92,8 @@ mlirRegionAddBlock region arguments = do
   block <- mlirBlockCreate arguments
   mlirRegionAppendOwnedBlock region block
   return block
+
+-- Utilities (MOVE SOMEWHERE ELSE)
+writeBytecodeToFile :: Bytecode -> FilePath -> IO ()
+writeBytecodeToFile bytecode filepath = assert (isByteArrayPinned bytecode) $ withBinaryFile filepath WriteMode (\ fhandle ->
+  hPutBuf fhandle (byteArrayContents bytecode) (sizeofByteArray bytecode))

@@ -94,8 +94,10 @@ library
 
     other-modules:    MLIR.FFI.Support
                       MLIR.FFI.AffineExpr
+                      MLIR.FFI.IntegerSet
                       MLIR.FFI.AffineMap
                       MLIR.FFI.IR
+                      MLIR.FFI.Interfaces
                       MLIR.FFI.BuiltinTypes
                       MLIR.FFI.BuiltinAttributes
                       MLIR.FFI.Marshal
@@ -240,6 +242,18 @@ library
     extra-lib-dirs:   /home/cha0s/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib
     -- Base language which the package is written in.
     default-language: GHC2021
+
+
+test-suite mlir-hs-bytecode-test
+    import:           warnings,
+                      devel
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          BytecodeTest.hs
+    build-depends:
+        base ^>=4.17.2.1,
+        mlir-hs
 
 test-suite mlir-hs-llvm-test
     import:           warnings,
@@ -421,3 +435,4 @@ test-suite mlir-hs-vector-test
     build-depends:
         base ^>=4.17.2.1,
         mlir-hs
+
