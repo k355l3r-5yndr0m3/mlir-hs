@@ -69,10 +69,10 @@ library
 
     -- Modules exported by the library.
     exposed-modules:  MLIR
-                      MLIR.TH
                       MLIR.IR
                       MLIR.BuiltinTypes
                       MLIR.BuiltinAttributes
+                      MLIR.TH
                       MLIR.Dialect.Arith
                       MLIR.Dialect.Async
                       MLIR.Dialect.ControlFlow
@@ -94,9 +94,9 @@ library
 
     other-modules:    MLIR.FFI.Support
                       MLIR.FFI.AffineExpr
+                      MLIR.FFI.IR
                       MLIR.FFI.IntegerSet
                       MLIR.FFI.AffineMap
-                      MLIR.FFI.IR
                       MLIR.FFI.Interfaces
                       MLIR.FFI.BuiltinTypes
                       MLIR.FFI.BuiltinAttributes
@@ -125,17 +125,15 @@ library
     -- Directories containing source files.
     hs-source-dirs:   src
 
-
     include-dirs:     cbit
-
-    -- TODO: Rewrite the extra-libraries
+    
     extra-libraries:  stdc++
                       tinfo
+                      MLIRCAPIIR
                       LLVMDemangle
                       LLVMSupport
                       MLIRSupport
                       MLIRIR
-                      MLIRCAPIIR
                       MLIRBytecodeWriter
                       MLIRBytecodeReader
                       MLIRBytecodeOpInterface
@@ -160,86 +158,86 @@ library
                       MLIRInferIntRangeCommon
                       MLIRCastInterfaces
                       MLIRInferIntRangeInterface
-
-    extra-libraries:  MLIRCAPIAsync
-                      MLIRAsyncDialect
-
-    extra-libraries:  MLIRCAPIControlFlow
-                      MLIRControlFlowDialect
-
-    extra-libraries:  MLIRCAPIGPU
-                      MLIRGPUDialect
-                      MLIRDLTIDialect
-                      MLIRMemRefDialect
-                      MLIRDialectUtils
-
-    extra-libraries:  MLIRCAPILinalg
-                      MLIRLinalgDialect
-                      MLIRViewLikeInterface
-                      MLIRArithUtils
-
-                      MLIRBufferizationTransformOps
-                      MLIRVectorTransformOps
-
-                      MLIRTensorDialect
-                      MLIRAffineDialect
-                      MLIRDestinationStyleOpInterface
-                      MLIRShapedOpInterfaces
-                      MLIRMathDialect
-                      MLIRSparseTensorDialect
-                      MLIRComplexDialect
-
-    extra-libraries:  MLIRCAPIMath
-                      MLIRMathDialect
-
-    extra-libraries:  MLIRCAPIMemRef
-                      MLIRMemRefDialect
-
-    extra-libraries:  MLIRCAPIMLProgram
-                      MLIRMLProgramDialect
-
-    extra-libraries:  MLIRCAPIPDL
-                      MLIRPDLDialect
-
-    extra-libraries:  MLIRCAPIQuant
-                      MLIRQuantDialect
-
-    extra-libraries:  MLIRCAPISCF
-                      MLIRSCFDialect
-                      MLIRBufferizationDialect
-                      MLIRParallelCombiningOpInterface
-
-    extra-libraries:  MLIRCAPIShape
-                      MLIRShapeDialect
-                      MLIRDialect
-    
-    extra-libraries:  MLIRCAPISparseTensor
-                      MLIRSparseTensorDialect
-
-    extra-libraries:  MLIRCAPITensor
-                      MLIRTensorDialect
-
-    extra-libraries:  MLIRCAPITransformDialect
-                      MLIRTransformDialect
-                      MLIRPass
-                      MLIRTransformUtils
-                      MLIRAnalysis
-                      MLIRRewrite
-                      MLIRPDLInterpDialect
-                      MLIRTransforms
-                      MLIRTransformDialectUtils
-                      MLIRCallInterfaces
-                      MLIRLoopLikeInterface
-                      MLIRPDLToPDLInterp
-
-    extra-libraries:  MLIRCAPIVector
-                      MLIRVectorDialect
-                      MLIRMaskingOpInterface
-                      MLIRMaskableOpInterface
-                      MLIRVectorInterfaces
+--
+--    extra-libraries:  MLIRCAPIAsync
+--                      MLIRAsyncDialect
+--
+--    extra-libraries:  MLIRCAPIControlFlow
+--                      MLIRControlFlowDialect
+--
+--    extra-libraries:  MLIRCAPIGPU
+--                      MLIRGPUDialect
+--                      MLIRDLTIDialect
+--                      MLIRMemRefDialect
+--                      MLIRDialectUtils
+--
+--    extra-libraries:  MLIRCAPILinalg
+--                      MLIRLinalgDialect
+--                      MLIRViewLikeInterface
+--                      MLIRArithUtils
+--
+--                      MLIRBufferizationTransformOps
+--                      MLIRVectorTransformOps
+--
+--                      MLIRTensorDialect
+--                      MLIRAffineDialect
+--                      MLIRDestinationStyleOpInterface
+--                      MLIRShapedOpInterfaces
+--                      MLIRMathDialect
+--                      MLIRSparseTensorDialect
+--                      MLIRComplexDialect
+--
+--    extra-libraries:  MLIRCAPIMath
+--                      MLIRMathDialect
+--
+--    extra-libraries:  MLIRCAPIMemRef
+--                      MLIRMemRefDialect
+--
+--    extra-libraries:  MLIRCAPIMLProgram
+--                      MLIRMLProgramDialect
+--
+--    extra-libraries:  MLIRCAPIPDL
+--                      MLIRPDLDialect
+--
+--    extra-libraries:  MLIRCAPIQuant
+--                      MLIRQuantDialect
+--
+--    extra-libraries:  MLIRCAPISCF
+--                      MLIRSCFDialect
+--                      MLIRBufferizationDialect
+--                      MLIRParallelCombiningOpInterface
+--
+--    extra-libraries:  MLIRCAPIShape
+--                      MLIRShapeDialect
+--                      MLIRDialect
+--    
+--    extra-libraries:  MLIRCAPISparseTensor
+--                      MLIRSparseTensorDialect
+--
+--    extra-libraries:  MLIRCAPITensor
+--                      MLIRTensorDialect
+--
+--    extra-libraries:  MLIRCAPITransformDialect
+--                      MLIRTransformDialect
+--                      MLIRPass
+--                      MLIRTransformUtils
+--                      MLIRAnalysis
+--                      MLIRRewrite
+--                      MLIRPDLInterpDialect
+--                      MLIRTransforms
+--                      MLIRTransformDialectUtils
+--                      MLIRCallInterfaces
+--                      MLIRLoopLikeInterface
+--                      MLIRPDLToPDLInterp
+--
+--    extra-libraries:  MLIRCAPIVector
+--                      MLIRVectorDialect
+--                      MLIRMaskingOpInterface
+--                      MLIRMaskableOpInterface
+--                      MLIRVectorInterfaces
 
     -- TODO: Remove this
-    extra-lib-dirs:   /home/cha0s/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib
+    -- extra-lib-dirs:   /home/cha0s/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/lib
     -- Base language which the package is written in.
     default-language: GHC2021
 

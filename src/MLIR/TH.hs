@@ -31,13 +31,16 @@ import Data.List      (genericLength)
 
 import System.Process (shell, readCreateProcess)
 import System.FilePath
+import System.Environment
 
 import Language.Haskell.TH
 
 import qualified Data.Vector as V
 
 llvmIncludePath :: IO FilePath
-llvmIncludePath = init <$> readCreateProcess (shell "llvm-config --includedir ") ""
+llvmIncludePath = init <$> do 
+  putStrLn =<< getEnv "PATH"
+  readCreateProcess (shell "llvm-config --includedir ") ""
 
 llvmTablegen :: [FilePath] -> FilePath -> IO Tablegen
 llvmTablegen includedirs source = do
