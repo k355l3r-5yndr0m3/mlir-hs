@@ -1,48 +1,39 @@
 {-# OPTIONS_GHC -Wall #-}
 module MLIR.IR 
 ( module MLIR.IR
-, module MLIR.FFI.IR 
+-- TODO: Do not reexport all declarations from MLIR.FFI.IR 
+-- some functions might not be safe. 
+-- And some functions are not needed at high level.
+, module MLIR.FFI.IR
 ) where
 import MLIR.FFI.IR
 
-import Control.Exception
-import Control.Monad
+import Control.Exception (assert)
 
 import Data.Primitive
 import Data.IORef
 
 import System.IO
 
-
--- Functionalities:
---   + Constructing IR
---   + Inspecting IR
---   + Modifying IR (Either by reconstructing IR or modifying inplace)
--- Reconstruction is definately possible (inplace? might not be)
--- One massive problem with mlir is its ownership model
--- Some object is owned by the user (haskell runtime must free it)
--- Some object is owned by Mlir* (most of the time it is MlirContext, and it must not be freed by the runtime)
--- Object can switch between the two
-
 -- A pinned bytearray
 type Bytecode = ByteArray
 
-withMlirContext :: (MlirContext -> IO a) -> IO a
-withMlirContext = bracket mlirContextCreate mlirContextDestroy
+withMlirContext :: (IO MlirContext -> (MlirContext -> IO ()) -> a) -> a
+withMlirContext bracket = bracket mlirContextCreate mlirContextDestroy
 
-withMlirContextThreading :: Bool -> (MlirContext -> IO a) -> IO a
-withMlirContextThreading threadingEnabled = bracket (mlirContextCreateWithThreading threadingEnabled) mlirContextDestroy
+withMlirContextThreading :: Bool -> (IO MlirContext -> (MlirContext -> IO ()) -> a) -> a
+withMlirContextThreading threadingEnabled bracket = bracket (mlirContextCreateWithThreading threadingEnabled) mlirContextDestroy
 
-withMlirContextRegistry :: MlirDialectRegistry -> Bool -> (MlirContext -> IO a) -> IO a
-withMlirContextRegistry registry threadingEnabled = bracket (mlirContextCreateWithRegistry registry threadingEnabled) mlirContextDestroy
+withMlirContextRegistry :: MlirDialectRegistry -> Bool -> (IO MlirContext -> (MlirContext -> IO ()) -> a) -> a
+withMlirContextRegistry registry threadingEnabled bracket = bracket (mlirContextCreateWithRegistry registry threadingEnabled) mlirContextDestroy
 
 -- Dialect registry backet
-withMlirDialectRegistry :: (MlirDialectRegistry -> IO a) -> IO a
-withMlirDialectRegistry = bracket mlirDialectRegistryCreate mlirDialectRegistryDestroy
+withMlirDialectRegistry :: (IO MlirDialectRegistry -> (MlirDialectRegistry -> IO ()) -> a) -> a
+withMlirDialectRegistry bracket = bracket mlirDialectRegistryCreate mlirDialectRegistryDestroy
 
 -- Module bracket
-withMlirModule :: MlirLocation -> (MlirModule -> IO a) -> IO a
-withMlirModule location = bracket (mlirModuleCreateEmpty location) mlirModuleDestroy
+withMlirModule :: MlirLocation -> (IO MlirModule -> (MlirModule -> IO ()) -> a) -> a
+withMlirModule location bracket = bracket (mlirModuleCreateEmpty location) mlirModuleDestroy
 
 mlirModuleEmitBytecode :: MlirModule -> IO Bytecode
 mlirModuleEmitBytecode = mlirOperationEmitBytecode . mlirModuleGetOperation

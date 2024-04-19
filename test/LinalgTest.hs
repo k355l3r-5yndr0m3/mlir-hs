@@ -1,4 +1,5 @@
 module Main (main) where
+import Control.Exception
 
 import MLIR.BuiltinAttributes
 import MLIR.BuiltinTypes
@@ -9,12 +10,12 @@ import qualified MLIR.Dialect.Linalg as Linalg
 
 main :: IO ()
 main = do
-  withMlirContext $ \ context -> 
+  withMlirContext bracket $ \ context -> 
     do
     let ul  = mlirLocationUnknownGet context
         i32 = mlirIntegerTypeGet context 32
     _ <- mlirDialectHandleLoadDialect Linalg.dialectHandle context
-    withMlirModule (mlirLocationUnknownGet context) $ \ _module -> 
+    withMlirModule (mlirLocationUnknownGet context) bracket $ \ _module -> 
       do
       let body = mlirModuleGetBody _module
       mlirModuleDump _module

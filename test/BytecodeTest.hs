@@ -1,18 +1,19 @@
 module Main (main) where
-import MLIR.BuiltinAttributes
-import MLIR.BuiltinTypes
+import Control.Exception
 import MLIR.IR
+import System.Directory
 
 
 main :: IO ()
 main = do
-  withMlirContext $ \ context -> 
+  withMlirContext bracket $ \ context -> 
     do
     let ul = mlirLocationUnknownGet context
-    withMlirModule (mlirLocationUnknownGet context) $ \ _module -> 
+    withMlirModule (mlirLocationUnknownGet context) bracket $ \ _module -> 
       do
       bytecode <- mlirModuleEmitBytecode _module
       writeBytecodeToFile bytecode outputFile
+  removeFile outputFile
   return ()
   where outputFile = "mlir-bytecode.bin"
 
